@@ -25,6 +25,8 @@ _FORBIDDEN_ROOT_IMPORTS = {
     "llama_cpp",
     "faster_whisper",
     "piper",
+    "fastapi",
+    "uvicorn",
 }
 
 
@@ -63,6 +65,7 @@ def test_public_error_exports() -> None:
     assert ceia_aisdk.DownloadError is not None
     assert ceia_aisdk.GenerationError is not None
     assert ceia_aisdk.CapabilityError is not None
+    assert ceia_aisdk.ServerError is not None
     from ceia_aisdk import (
         AISDKError,
         CapabilityError,
@@ -71,6 +74,7 @@ def test_public_error_exports() -> None:
         DownloadError,
         GenerationError,
         ModelNotFoundError,
+        ServerError,
     )
 
     assert issubclass(ConfigError, AISDKError)
@@ -79,6 +83,7 @@ def test_public_error_exports() -> None:
     assert issubclass(DownloadError, AISDKError)
     assert issubclass(GenerationError, AISDKError)
     assert issubclass(CapabilityError, AISDKError)
+    assert issubclass(ServerError, AISDKError)
 
 
 def test_python_requires_range() -> None:
@@ -97,14 +102,20 @@ def test_cuda_extra_is_declared() -> None:
     dist = importlib.metadata.distribution("ceia-aisdk")
     extras = dist.metadata.get_all("Provides-Extra") or []
     assert "cuda" in extras
-    assert "server" not in extras
+    assert "server" in extras
     assert "apps" not in extras
     requires = dist.metadata.get_all("Requires-Dist") or []
     cuda_reqs = [
         item for item in requires if 'extra == "cuda"' in item or "extra == 'cuda'" in item
     ]
+    server_reqs = [
+        item for item in requires if 'extra == "server"' in item or "extra == 'server'" in item
+    ]
     assert cuda_reqs
     assert any("llama-cpp-python" in item for item in cuda_reqs)
+    assert server_reqs
+    assert any("fastapi" in item for item in server_reqs)
+    assert any("uvicorn" in item for item in server_reqs)
 
 
 def test_package_root_is_lightweight() -> None:

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from ceia_aisdk.errors import DeviceError, GenerationError
+from ceia_aisdk.llm.tools import CompletionResult, ToolCall, ToolDeclaration
 
 _OOM_REMEDIATION = 'Use a smaller alias such as llm/small, or set device="cpu" and retry.'
 _GENERATION_REMEDIATION = (
@@ -184,6 +185,47 @@ class LlamaCppBackend:
             _reraise_backend_error(exc)
             raise
 
+    def complete(
+        self,
+        messages: Sequence[dict[str, str]],
+        *,
+        max_tokens: int,
+        temperature: float,
+        seed: int | None,
+        tools: Sequence[ToolDeclaration] | None = None,
+        tool_choice: object = None,
+    ) -> CompletionResult:
+        """Return one completion that is either text or tool calls.
+
+        Args:
+            messages: Chat messages in role/content form.
+            max_tokens: Maximum tokens to generate.
+            temperature: Sampling temperature.
+            seed: Optional generation seed.
+            tools: Optional tool declarations. Handlers are never invoked.
+            tool_choice: Optional OpenAI tool-choice value.
+
+        Returns:
+            A ``CompletionResult``.
+
+        Raises:
+            GenerationError: If generation fails for a non-device reason.
+            DeviceError: If the backend reports out-of-memory.
+        """
+        try:
+            return _complete_result(
+                self._model,
+                messages,
+                max_tokens,
+                temperature,
+                seed,
+                tools=tools,
+                tool_choice=tool_choice,
+            )
+        except Exception as exc:
+            _reraise_backend_error(exc)
+            raise
+
 
 def _complete(
     model: object,
@@ -230,6 +272,104 @@ def _complete(
         result = model.create_completion(prompt, **completion_kwargs)
         return _parse_completion(result, stream=stream)
     return _parse_chat(result, stream=stream)
+
+
+def _complete_result(
+    model: object,
+    messages: Sequence[dict[str, str]],
+    max_tokens: int,
+    temperature: float,
+    seed: int | None,
+    *,
+    tools: Sequence[ToolDeclaration] | None,
+    tool_choice: object,
+) -> CompletionResult:
+    """Run one chat completion and map it to ``CompletionResult``.
+
+    Args:
+        model: Instantiated ``llama_cpp.Llama`` object.
+        messages: Chat messages.
+        max_tokens: Maximum tokens to generate.
+        temperature: Sampling temperature.
+        seed: Optional generation seed.
+        tools: Optional tool declarations.
+        tool_choice: Optional OpenAI tool-choice value.
+
+    Returns:
+        Text or structured tool calls.
+    """
+    kwargs: dict[str, object] = {
+        "messages": list(messages),
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "stream": False,
+    }
+    if seed is not None:
+        kwargs["seed"] = seed
+    if tools:
+        kwargs["tools"] = [_tool_schema(item) for item in tools]
+    if tool_choice is not None:
+        kwargs["tool_choice"] = tool_choice
+    create_chat = model.create_chat_completion
+    result = create_chat(**kwargs)
+    choice = _first_choice(result)
+    message = choice.get("message", {}) if isinstance(choice, dict) else {}
+    raw_calls = message.get("tool_calls") if isinstance(message, dict) else None
+    parsed_calls = _parse_tool_calls(raw_calls)
+    if parsed_calls:
+        return CompletionResult(tool_calls=parsed_calls)
+    content = message.get("content") if isinstance(message, dict) else None
+    return CompletionResult(content=content if isinstance(content, str) else "")
+
+
+def _tool_schema(declaration: ToolDeclaration) -> dict[str, object]:
+    """Convert a library tool declaration to an OpenAI function schema.
+
+    Args:
+        declaration: Library tool declaration.
+
+    Returns:
+        An OpenAI ``tools`` item.
+    """
+    return {
+        "type": "function",
+        "function": {
+            "name": declaration.name,
+            "description": declaration.description,
+            "parameters": dict(declaration.parameters),
+        },
+    }
+
+
+def _parse_tool_calls(raw_calls: object) -> tuple[ToolCall, ...] | None:
+    """Parse backend tool calls into public ``ToolCall`` values.
+
+    Args:
+        raw_calls: ``message.tool_calls`` from llama.cpp.
+
+    Returns:
+        A nonempty tuple, or ``None`` when no calls are present.
+    """
+    if not isinstance(raw_calls, list) or not raw_calls:
+        return None
+    calls: list[ToolCall] = []
+    for index, item in enumerate(raw_calls):
+        if not isinstance(item, dict):
+            continue
+        function = item.get("function", {})
+        if not isinstance(function, dict):
+            continue
+        name = function.get("name")
+        arguments = function.get("arguments", "{}")
+        if not isinstance(name, str) or not name:
+            continue
+        call_id = item.get("id")
+        if not isinstance(call_id, str) or not call_id:
+            call_id = f"call_{index}"
+        if not isinstance(arguments, str):
+            arguments = "{}"
+        calls.append(ToolCall(id=call_id, name=name, arguments=arguments))
+    return tuple(calls) or None
 
 
 def _parse_chat(result: object, *, stream: bool) -> str | list[str]:

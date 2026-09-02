@@ -10,13 +10,15 @@ from ceia_aisdk.llm.async_model import AsyncLLM, AsyncSession
 from ceia_aisdk.llm.model import LLM
 from ceia_aisdk.llm.session import Session
 from ceia_aisdk.llm.settings import LLMSettings
-from ceia_aisdk.llm.tools import ToolDeclaration
+from ceia_aisdk.llm.tools import CompletionResult, ToolCall, ToolDeclaration
 
 __all__ = [
     "AsyncLLM",
     "AsyncSession",
+    "CompletionResult",
     "LLM",
     "LLMSettings",
     "Session",
+    "ToolCall",
     "ToolDeclaration",
 ]

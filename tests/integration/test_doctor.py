@@ -58,8 +58,9 @@ def test_cpu_doctor_exit_zero_and_copy_block(isolated_home: Path) -> None:
     assert COPY_END in result.stdout
     assert "configured_device=cpu" in result.stdout
     assert "effective_device=cpu" in result.stdout
-    assert "optional_groups=cuda" in result.stdout
+    assert "optional_groups=cuda,server" in result.stdout
     assert "cuda:reserved" not in result.stdout
+    assert "server:reserved" not in result.stdout
     assert "cuda_binding=" in result.stdout
     assert ANSI_RE.search(result.stdout) is None
 

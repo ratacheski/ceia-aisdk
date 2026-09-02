@@ -162,6 +162,7 @@ def test_isolated_wheel_and_sdist_smoke(artifacts: tuple[Path, Path]) -> None:
     assert help_result.returncode == 0, help_result.stderr
     assert "doctor" in help_result.stdout
     assert "model" in help_result.stdout
+    assert "serve" in help_result.stdout
     model_help = subprocess.run(
         [
             "uv",

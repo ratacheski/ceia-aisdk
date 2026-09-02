@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import inspect
 
-from ceia_aisdk.llm import LLM
+from ceia_aisdk.llm import LLM, CompletionResult, ToolCall
 
 
 def test_llm_constructor_signature() -> None:
@@ -70,3 +70,18 @@ def test_async_llm_signature_and_docstring() -> None:
     assert "to_thread" in blob or "blocking" in blob
     chat = inspect.signature(AsyncLLM.chat)
     assert chat.parameters["max_tokens"].default == 512
+
+
+def test_complete_and_tool_types_are_public() -> None:
+    import dataclasses
+
+    signature = inspect.signature(LLM.complete)
+    assert "messages" in signature.parameters
+    assert signature.parameters["max_tokens"].default == 512
+    assert signature.parameters["temperature"].default == 0.8
+    call = ToolCall(id="call_1", name="get_weather", arguments="{}")
+    result = CompletionResult(content="ok")
+    assert dataclasses.is_dataclass(ToolCall)
+    assert dataclasses.is_dataclass(CompletionResult)
+    assert call.name == "get_weather"
+    assert result.content == "ok"

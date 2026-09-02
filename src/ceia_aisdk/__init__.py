@@ -18,6 +18,7 @@ from ceia_aisdk.errors import (
     DownloadError,
     GenerationError,
     ModelNotFoundError,
+    ServerError,
 )
 from ceia_aisdk.hardware import GPUInfo, detect_gpus, get_device
 
@@ -26,7 +27,7 @@ install_null_handler()
 try:
     __version__ = version("ceia-aisdk")
 except PackageNotFoundError:  # pragma: no cover - editable installs expose metadata
-    __version__ = "0.1.0"
+    __version__ = "0.2.0"
 
 __all__ = [
     "AISDKConfig",
@@ -38,6 +39,7 @@ __all__ = [
     "GPUInfo",
     "GenerationError",
     "ModelNotFoundError",
+    "ServerError",
     "__version__",
     "detect_gpus",
     "get_device",

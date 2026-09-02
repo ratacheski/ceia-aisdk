@@ -38,6 +38,19 @@ def cli_available() -> str:
     return path
 
 
+def _is_long_running_serve(example: str) -> bool:
+    command = example
+    while True:
+        match = re.match(r"^([A-Z][A-Z0-9_]*)=(\S+)\s+(.*)$", command)
+        if not match:
+            break
+        command = match.group(3)
+    tokens = command.split()
+    if len(tokens) < 2 or tokens[0] != _COMMAND or tokens[1] != "serve":
+        return False
+    return "--help" not in tokens and "-h" not in tokens
+
+
 def test_root_help_lists_doctor_and_examples(cli_available: str) -> None:
     del cli_available
     result = _run(["--help"])
@@ -45,8 +58,10 @@ def test_root_help_lists_doctor_and_examples(cli_available: str) -> None:
     text = result.stdout
     assert "Linux x86_64" in text
     assert "doctor" in text
+    assert "serve" in text
     assert "Examples" in text
     assert "ceia-aisdk doctor" in text
+    assert "ceia-aisdk serve --help" in text
     assert "download" in text.lower() or "foundation" in text.lower()
     assert _NON_ENGLISH_RE.search(text) is None
 
@@ -79,7 +94,11 @@ def test_doctor_help_covers_scope_and_examples(cli_available: str) -> None:
 
 def test_help_examples_are_executable(cli_available: str) -> None:
     del cli_available
-    pages = [_run(["--help"]).stdout, _run(["doctor", "--help"]).stdout]
+    pages = [
+        _run(["--help"]).stdout,
+        _run(["doctor", "--help"]).stdout,
+        _run(["serve", "--help"]).stdout,
+    ]
     examples: list[str] = []
     for page in pages:
         in_examples = False
@@ -93,7 +112,10 @@ def test_help_examples_are_executable(cli_available: str) -> None:
     unique_examples = list(dict.fromkeys(examples))
     assert unique_examples, "help pages must include executable ceia-aisdk examples"
     assert any(item == "ceia-aisdk doctor" or item.endswith(" doctor") for item in unique_examples)
+    assert any(item == "ceia-aisdk serve --help" for item in unique_examples)
     for example in unique_examples:
+        if _is_long_running_serve(example):
+            continue
         env: dict[str, str] = {}
         command = example
         while True:

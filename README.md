@@ -80,12 +80,42 @@ If the project publishes a prebuilt extra index, install from that index
 instead of compiling. `ceia-aisdk doctor` reports GPU visibility and, separately,
 whether the CUDA inference binding is present (`cuda_binding=yes|no`).
 
-## CLI
+## OpenAI-compatible local server
+
+Install the optional serving extra, then start a loopback OpenAI-compatible
+listener. The default bind is `http://127.0.0.1:11434/v1`. Clients use opaque
+aliases such as `llm/small`. Never send Hugging Face repository names.
+
+```bash
+pip install "ceia-aisdk[server]"
+ceia-aisdk serve
+```
+
+Point an official OpenAI client at that `/v1` base URL. Non-stream and stream
+(`stream: true`) chat completions are supported. OpenAI `tools` / `tool_calls`
+use the same `POST /v1/chat/completions` route. The server does not execute
+tool handlers; the client executes tools and may send a `role: tool` follow-up.
+
+Optional process flags:
+
+- `--token SECRET` requires `Authorization: Bearer SECRET`
+- `--cors` allows any browser origin (default CORS allows only localhost)
+- `--debug` is the only flag that may log message bodies
+- `--host` / `--port` override the bind. The default host is loopback. Binding
+  `0.0.0.0` exposes the process beyond this machine. TLS is provided by a
+  reverse proxy, not by this command.
+
+At most eight requests may wait for a busy model alias. The next request
+receives HTTP 429. If port 11434 is already taken, start fails: pass `--port`
+or stop the occupant. Linux x86_64 only.
+
+Voice, vision, RAG, and the app launcher are out of this slice.
 
 ```bash
 ceia-aisdk --help
 ceia-aisdk doctor
 ceia-aisdk model --help
+ceia-aisdk serve --help
 ```
 
 ## Configuration

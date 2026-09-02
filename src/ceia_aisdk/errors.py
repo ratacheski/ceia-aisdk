@@ -112,3 +112,22 @@ class CapabilityError(AISDKError):
                 choosing an alias whose capabilities include tool_use.
         """
         super().__init__(message, remediation=remediation)
+
+
+class ServerError(AISDKError):
+    """Raised when the local OpenAI-compatible server cannot start.
+
+    Typical cases are a missing ``[server]`` extra or a bind address that is
+    already in use. String conversion does not include a Python traceback.
+    """
+
+    def __init__(self, message: str, *, remediation: str) -> None:
+        """Initialize a serve-process error.
+
+        Args:
+            message: Nonempty user-facing English explanation.
+            remediation: Nonempty user-facing English next action. Missing-extra
+                failures must mention ``ceia-aisdk[server]``. Bind failures must
+                mention ``--port`` and stopping the occupant.
+        """
+        super().__init__(message, remediation=remediation)

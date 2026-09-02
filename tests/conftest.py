@@ -428,6 +428,7 @@ class FakeBackend:
     chunks: tuple[str, ...] = ("ok",)
     raise_oom: bool = False
     raise_overflow: bool = False
+    tool_calls: tuple[Any, ...] | None = None
     calls: list[dict[str, Any]] = field(default_factory=list)
     n_gpu_layers: int = 0
     n_ctx: int = 8192
@@ -506,6 +507,51 @@ class FakeBackend:
         if self.raise_overflow:
             raise RuntimeError("context overflow: prompt is longer than n_ctx")
         yield from self.chunks
+
+    def complete(
+        self,
+        messages: Sequence[dict[str, str]],
+        *,
+        max_tokens: int,
+        temperature: float,
+        seed: int | None,
+        tools: object = None,
+        tool_choice: object = None,
+    ) -> Any:
+        """Return canned text or structured tool calls.
+
+        Args:
+            messages: Chat messages passed by the LLM wrapper.
+            max_tokens: Maximum tokens requested.
+            temperature: Sampling temperature.
+            seed: Optional generation seed.
+            tools: Optional tool declarations.
+            tool_choice: Optional tool-choice value.
+
+        Returns:
+            A ``CompletionResult`` when tool calls are configured, else text
+            wrapped by the caller.
+        """
+        from ceia_aisdk.llm.tools import CompletionResult
+
+        self.calls.append(
+            {
+                "kind": "complete",
+                "messages": list(messages),
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "seed": seed,
+                "tools": tools,
+                "tool_choice": tool_choice,
+            }
+        )
+        if self.raise_oom:
+            raise RuntimeError("CUDA out of memory")
+        if self.raise_overflow:
+            raise RuntimeError("context overflow: prompt is longer than n_ctx")
+        if self.tool_calls:
+            return CompletionResult(tool_calls=tuple(self.tool_calls))
+        return CompletionResult(content=self.text)
 
 
 @pytest.fixture

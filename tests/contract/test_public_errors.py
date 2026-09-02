@@ -16,6 +16,7 @@ from ceia_aisdk.errors import (
     DownloadError,
     GenerationError,
     ModelNotFoundError,
+    ServerError,
 )
 
 _ASCII_DOC_RE = re.compile(r"^[\x20-\x7E\n]+$")
@@ -29,7 +30,10 @@ def test_public_error_hierarchy() -> None:
     assert issubclass(DownloadError, AISDKError)
     assert issubclass(GenerationError, AISDKError)
     assert issubclass(CapabilityError, AISDKError)
+    assert issubclass(ServerError, AISDKError)
     assert GenerationError is not DeviceError
+    assert ServerError is not GenerationError
+    assert ServerError is not ConfigError
     assert GenerationError is not DownloadError
     assert CapabilityError is not GenerationError
     assert ConfigError is not DeviceError
@@ -60,18 +64,25 @@ def test_subclasses_preserve_remediation() -> None:
     download = DownloadError("transfer failed", remediation="retry model pull")
     generation = GenerationError("context overflow", remediation="shorten history")
     capability = CapabilityError("tools unsupported", remediation="use llm/medium")
+    server = ServerError(
+        "The [server] extra is not installed.",
+        remediation="Install ceia-aisdk[server] and retry ceia-aisdk serve.",
+    )
     assert isinstance(config_error, AISDKError)
     assert isinstance(device_error, AISDKError)
     assert isinstance(missing, AISDKError)
     assert isinstance(download, AISDKError)
     assert isinstance(generation, AISDKError)
     assert isinstance(capability, AISDKError)
+    assert isinstance(server, AISDKError)
     assert config_error.remediation == "use WARNING"
     assert device_error.remediation == "use device=cpu"
     assert missing.remediation == "use llm/small"
     assert download.remediation == "retry model pull"
     assert generation.remediation == "shorten history"
     assert capability.remediation == "use llm/medium"
+    assert server.remediation.strip()
+    assert "ceia-aisdk[server]" in server.remediation
     assert missing.remediation.strip()
     assert download.remediation.strip()
     assert generation.remediation.strip()
@@ -88,6 +99,7 @@ def test_subclasses_preserve_remediation() -> None:
         DownloadError,
         GenerationError,
         CapabilityError,
+        ServerError,
     ],
 )
 def test_error_classes_have_english_docstrings(cls: type[AISDKError]) -> None:
@@ -111,6 +123,7 @@ def test_error_classes_have_english_docstrings(cls: type[AISDKError]) -> None:
         DownloadError,
         GenerationError,
         CapabilityError,
+        ServerError,
     ],
 )
 @pytest.mark.parametrize(
@@ -156,6 +169,7 @@ def test_registry_errors_are_exported_from_package_root() -> None:
     assert ceia_aisdk.DownloadError is DownloadError
     assert ceia_aisdk.GenerationError is GenerationError
     assert ceia_aisdk.CapabilityError is CapabilityError
+    assert ceia_aisdk.ServerError is ServerError
 
 
 def test_registry_errors_do_not_embed_origin_urls() -> None:

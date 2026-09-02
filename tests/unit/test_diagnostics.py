@@ -67,7 +67,9 @@ def test_cpu_report_is_usable(isolated_home: Path) -> None:
     assert report.exit_code == 0
     assert report.effective_device == "cpu"
     assert report.configured_device == "cpu"
-    assert report.optional_groups == ("cuda",)
+    assert "cuda" in report.optional_groups
+    assert "server" in report.optional_groups
+    assert report.optional_groups == tuple(sorted(report.optional_groups))
     assert report.cuda_binding is False
     assert report.python_supported is True
     assert report.package_importable is True
@@ -129,8 +131,9 @@ def test_copy_block_field_order_and_values(isolated_home: Path) -> None:
         "remediation",
     ]
     assert "status=usable" in block
-    assert "optional_groups=cuda" in block
+    assert "optional_groups=cuda,server" in block
     assert "cuda:reserved" not in block
+    assert "server:reserved" not in block
     assert "cuda_binding=no" in block
     assert "offline=true" in block
     assert "\x1b[" not in block

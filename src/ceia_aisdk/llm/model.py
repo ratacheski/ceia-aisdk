@@ -7,7 +7,7 @@ thread is undefined, and this module does not install a process-wide lock.
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from typing import TYPE_CHECKING
 
 from ceia_aisdk._logging import get_logger
@@ -16,7 +16,7 @@ from ceia_aisdk.errors import AISDKError, GenerationError
 from ceia_aisdk.llm.backend import InferenceBackend, create_backend
 from ceia_aisdk.llm.devices import resolve_generation_device
 from ceia_aisdk.llm.settings import LLMSettings
-from ceia_aisdk.llm.tools import ToolDeclaration
+from ceia_aisdk.llm.tools import CompletionResult, ToolDeclaration
 from ceia_aisdk.registry import ensure_local, get_public_metadata, resolve
 
 if TYPE_CHECKING:
@@ -86,6 +86,7 @@ class LLM:
             stop_progress()
         metadata = get_public_metadata(requested_alias, config=self._config, domain=domain)
         self._tools = tuple(tools) if tools else ()
+        self._capabilities = metadata.capabilities
         if self._tools:
             from ceia_aisdk.errors import CapabilityError
 
@@ -233,6 +234,86 @@ class LLM:
             text = self.chat(prompt, max_tokens=max_tokens, temperature=temperature, seed=seed)
             yield text
 
+    def complete(
+        self,
+        messages: Sequence[Mapping[str, object]],
+        *,
+        tools: Sequence[ToolDeclaration] | None = None,
+        tool_choice: str | Mapping[str, object] | None = None,
+        max_tokens: int = 512,
+        temperature: float = 0.8,
+        seed: int | None = None,
+    ) -> CompletionResult:
+        """Perform one generate step and return text or structured tool calls.
+
+        This method never runs ``ToolDeclaration.handler`` and never loops.
+        ``chat`` remains a string API.
+
+        Args:
+            messages: OpenAI-shaped messages with roles ``system``, ``user``,
+                ``assistant``, or ``tool``.
+            tools: Optional tool declarations for this step.
+            tool_choice: Optional ``none`` / ``auto`` / named-function choice.
+            max_tokens: Maximum tokens to generate.
+            temperature: Sampling temperature.
+            seed: Optional generation seed.
+
+        Returns:
+            A ``CompletionResult`` with nonempty ``content`` or nonempty
+            ``tool_calls``.
+
+        Raises:
+            CapabilityError: If ``tools`` are passed to an alias without
+                ``tool_use``.
+            GenerationError: If generation fails for a non-device reason.
+            DeviceError: If the backend reports out-of-memory.
+        """
+        declared = tuple(tools) if tools else self._tools
+        if declared and "tool_use" not in self._capabilities:
+            from ceia_aisdk.errors import CapabilityError
+
+            raise CapabilityError(
+                "The selected alias does not support tool use.",
+                remediation=(
+                    "Choose an alias whose public capabilities include tool_use, "
+                    "for example llm/medium when that capability is cataloged."
+                ),
+            )
+        normalized = [_normalize_complete_message(item) for item in messages]
+        try:
+            complete = getattr(self._backend, "complete", None)
+            if callable(complete):
+                result = complete(
+                    normalized,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    seed=seed,
+                    tools=declared,
+                    tool_choice=tool_choice,
+                )
+            else:
+                result = self._backend.generate(
+                    normalized,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    seed=seed,
+                )
+        except AISDKError:
+            raise
+        except Exception as exc:
+            from ceia_aisdk.llm.backend import _reraise_backend_error
+
+            _reraise_backend_error(exc)
+            raise
+        if isinstance(result, CompletionResult):
+            return result
+        if not isinstance(result, str) or not result.strip():
+            raise GenerationError(
+                "Local generation returned an empty completion.",
+                remediation="Retry with a shorter prompt or a different alias.",
+            )
+        return CompletionResult(content=result)
+
     def session(self, system: str | None = None) -> Session:
         """Return a multi-turn session bound to this instance.
 
@@ -245,6 +326,27 @@ class LLM:
         from ceia_aisdk.llm.session import Session
 
         return Session(self, system=system)
+
+
+def _normalize_complete_message(item: Mapping[str, object]) -> dict[str, str]:
+    """Normalize one complete() message to role/content strings.
+
+    Args:
+        item: OpenAI-shaped message mapping.
+
+    Returns:
+        A backend-safe role/content mapping. Tool metadata is kept in
+        content when present so the backend sees the turn.
+    """
+    role = str(item.get("role", "user"))
+    content = item.get("content")
+    if content is None:
+        content = ""
+    message = {"role": role, "content": str(content)}
+    tool_call_id = item.get("tool_call_id")
+    if isinstance(tool_call_id, str) and tool_call_id:
+        message["tool_call_id"] = tool_call_id
+    return message
 
 
 def _tty_progress() -> tuple[

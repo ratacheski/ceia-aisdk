@@ -16,7 +16,6 @@ from ceia_aisdk.hardware import GPUInfo, HardwareSnapshot, ProbeStatus
 
 COPY_BLOCK_BEGIN = "--- CEIA AI SDK doctor: copy this ---"
 COPY_BLOCK_END = "--- end CEIA AI SDK doctor ---"
-_OPTIONAL_GROUPS = ("cuda",)
 
 
 class CheckStatus(Enum):
@@ -164,7 +163,7 @@ def build_report(
         cache_dir=None if config is None else normalize_user_path(config.cache_dir),
         offline=None if config is None else config.offline,
         cuda_binding=cuda_binding,
-        optional_groups=_OPTIONAL_GROUPS,
+        optional_groups=_declared_optional_groups(),
         checks=checks,
         usable=usable,
         exit_code=0 if usable else 1,
@@ -360,11 +359,29 @@ def _build_checks(
             label="Optional groups",
             status=CheckStatus.INFO,
             summary=(
-                "cuda extra is installable; rebuild llama-cpp-python with GGML_CUDA for GPU offload"
+                "declared extras are installable; rebuild llama-cpp-python with "
+                "GGML_CUDA for GPU offload"
             ),
         )
     )
     return tuple(checks)
+
+
+def _declared_optional_groups() -> tuple[str, ...]:
+    """Return extras declared by the installed distribution metadata.
+
+    Returns:
+        Sorted extra names from ``Provides-Extra``. Falls back to ``cuda``
+        when metadata is unavailable.
+    """
+    try:
+        from importlib.metadata import distribution
+
+        extras = distribution("ceia-aisdk").metadata.get_all("Provides-Extra") or []
+    except Exception:
+        extras = ("cuda",)
+    names = {item.strip() for item in extras if isinstance(item, str) and item.strip()}
+    return tuple(sorted(names))
 
 
 def _python_supported() -> bool:

@@ -1,6 +1,6 @@
 [project]
 name = "ceia-aisdk"
-version = "0.1.0"
+version = "0.2.0"
 description = "CEIA AI SDK for local GGUF chat on Linux x86_64. Weights are downloaded at runtime and are not included in the wheel."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
@@ -30,6 +30,10 @@ dependencies = [
 cuda = [
     "llama-cpp-python>=0.3.35",
 ]
+server = [
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
+]
 
 [project.urls]
 Homepage = "https://github.com/ratacheski/ceia-aisdk"
@@ -49,6 +53,7 @@ build-backend = "uv_build"
 dev = [
     "check-wheel-contents>=0.6",
     "codespell>=2.4",
+    "openai>=3.7.0",
     "pydoclint>=0.6",
     "pytest>=8.3",
     "pytest-socket>=0.7",

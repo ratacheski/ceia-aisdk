@@ -7,11 +7,11 @@ and stream run in a worker thread via ``asyncio.to_thread``.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Mapping, Sequence
 
 from ceia_aisdk.config import AISDKConfig
 from ceia_aisdk.llm.model import LLM
-from ceia_aisdk.llm.tools import ToolDeclaration
+from ceia_aisdk.llm.tools import CompletionResult, ToolDeclaration
 
 _SENTINEL = object()
 
@@ -107,6 +107,45 @@ class AsyncLLM:
         return await asyncio.to_thread(
             self._sync.chat,
             prompt,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            seed=seed,
+        )
+
+    async def complete(
+        self,
+        messages: Sequence[Mapping[str, object]],
+        *,
+        tools: Sequence[ToolDeclaration] | None = None,
+        tool_choice: str | Mapping[str, object] | None = None,
+        max_tokens: int = 512,
+        temperature: float = 0.8,
+        seed: int | None = None,
+    ) -> CompletionResult:
+        """Await one generate step without blocking the event loop.
+
+        Args:
+            messages: OpenAI-shaped messages.
+            tools: Optional tool declarations for this step.
+            tool_choice: Optional tool-choice value.
+            max_tokens: Maximum tokens to generate.
+            temperature: Sampling temperature.
+            seed: Optional generation seed.
+
+        Returns:
+            A ``CompletionResult`` with text or tool calls.
+
+        Raises:
+            CapabilityError: If ``tools`` are passed to an alias without
+                ``tool_use``.
+            GenerationError: If generation fails for a non-device reason.
+            DeviceError: If the backend reports out-of-memory.
+        """
+        return await asyncio.to_thread(
+            self._sync.complete,
+            messages,
+            tools=tools,
+            tool_choice=tool_choice,
             max_tokens=max_tokens,
             temperature=temperature,
             seed=seed,
