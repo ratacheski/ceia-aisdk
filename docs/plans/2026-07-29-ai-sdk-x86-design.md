@@ -1,138 +1,138 @@
-# Design: SDK de IA local para PCs x86
+# Design: Local AI SDK for x86 PCs
 
-**Data:** 2026-07-29
-**Atualizado:** 2026-09-01
-**Status:** Design validado — pronto para planejamento de implementação
-**Nome oficial:** `ceia-aisdk`
+**Date:** 2026-07-29
+**Updated:** 2026-09-01
+**Status:** Design validated — ready for implementation planning
+**Official name:** `ceia-aisdk`
 
-| Superfície | Identificador |
+| Surface | Identifier |
 |---|---|
-| Produto | CEIA AI SDK |
+| Product | CEIA AI SDK |
 | PyPI / CLI | `ceia-aisdk` |
-| Import Python | `ceia_aisdk` |
-| Cache e config | `~/.ceia-aisdk/` |
+| Python import | `ceia_aisdk` |
+| Cache and config | `~/.ceia-aisdk/` |
 | Env vars | `CEIA_AISDK_*` |
 | Logging | `ceia_aisdk.*` |
-| Org HuggingFace | `ceia-aisdk` |
+| HuggingFace org | `ceia-aisdk` |
 
-Classes internas (`AISDKConfig`, `AISDKError` e subclasses) mantêm o prefixo curto `AISDK` — o acrônimo ainda descreve o produto.
+Internal classes (`AISDKConfig`, `AISDKError`, and subclasses) retain the short `AISDK` prefix — the acronym still describes the product.
 
 ---
 
 ## TL;DR
 
-SDK Python para PCs x86 (Windows/Linux) que entrega capabilities multimodais de IA local — LLM, STT, TTS, visão computacional e RAG — com API modular por domínio, defaults inteligentes e escape hatches para customização. Distribuído via `pip` como `ceia-aisdk`, com registry de modelos opaco e versionado (catálogo assinado Ed25519, pesos numa org HuggingFace com mirrors e o mesmo `sha256`), modo servidor OpenAI-compat, e um app launcher que instala Open WebUI e OpenClaw apontando para o servidor local. Backends escolhidos por maturidade: `llama-cpp-python`, `faster-whisper`, `piper-tts`, `sentence-transformers`, `lancedb`. Hardware alvo: CPU + auto-detecção de NVIDIA CUDA. Modelos são lazy no primeiro uso de cada módulo; `ceia-aisdk model pull --essentials` prepara o conjunto mínimo offline.
+Python SDK for x86 PCs (Windows/Linux) that delivers local multimodal AI capabilities — LLM, STT, TTS, computer vision, and RAG — with a modular API organized by domain, smart defaults, and escape hatches for customization. Distributed via `pip` as `ceia-aisdk`, with an opaque, versioned model registry (Ed25519-signed catalog, weights in a HuggingFace org with mirrors and the same `sha256`), an OpenAI-compatible server mode, and an app launcher that installs Open WebUI and OpenClaw configured to use the local server. Backends selected for maturity: `llama-cpp-python`, `faster-whisper`, `piper-tts`, `sentence-transformers`, `lancedb`. Target hardware: CPU + automatic NVIDIA CUDA detection. Models are loaded lazily on first use of each module; `ceia-aisdk model pull --essentials` prepares the minimum offline set.
 
 ---
 
-## 1. Visão e princípios norteadores
+## 1. Vision and guiding principles
 
-### Visão
+### Vision
 
-Um SDK Python para PCs x86 (Windows/Linux) que entrega capabilities multimodais de IA local (LLM, STT, TTS, visão, RAG) com API modular, zero-config nos defaults e escape hatches para quem precisa customizar.
+A Python SDK for x86 PCs (Windows/Linux) that delivers local multimodal AI capabilities (LLM, STT, TTS, vision, RAG) with a modular API, zero-config defaults, and escape hatches for users who need customization.
 
-### Personas atendidas
+### Target personas
 
-- **Dev hobbyista / prototipador** — quer 3 linhas de código e "just works". Consumo típico: `pip install ceia-aisdk` → `from ceia_aisdk.llm import LLM` → conversar.
-- **Dev de produto** — quer embutir em app desktop (via PyInstaller/Briefcase). Precisa de controle sobre modelo, cache path, logging e distribuição confiável.
-- **Usuário final** — nunca vê o SDK diretamente. Consome apps de referência que empacotam o SDK e escondem tudo.
+- **Hobbyist developer / prototyper** — wants 3 lines of code that "just works." Typical flow: `pip install ceia-aisdk` → `from ceia_aisdk.llm import LLM` → start chatting.
+- **Product developer** — wants to embed it in a desktop app (via PyInstaller/Briefcase). Needs control over the model, cache path, logging, and reliable distribution.
+- **End user** — never sees the SDK directly. Uses reference apps that bundle the SDK and hide all implementation details.
 
-### Três camadas do produto
+### Three product layers
 
-1. **Lib Python** (`import ceia_aisdk`) — para devs consumirem em código.
-2. **Server mode** (`ceia-aisdk serve`) — expõe API HTTP OpenAI-compatible, permitindo que qualquer cliente do ecossistema (LangChain, LibreChat, Continue, etc.) use o SDK como backend local.
-3. **App launcher** (`ceia-aisdk app install <nome>`) — instala frontends OSS pré-configurados apontando para o servidor local. Habilita "produto pronto" para end-user em minutos. Apps de referência do v1: **Open WebUI** (chat) e **OpenClaw** (agente).
+1. **Python library** (`import ceia_aisdk`) — for developers to use in code.
+2. **Server mode** (`ceia-aisdk serve`) — exposes an OpenAI-compatible HTTP API, allowing any ecosystem client (LangChain, LibreChat, Continue, etc.) to use the SDK as a local backend.
+3. **App launcher** (`ceia-aisdk app install <name>`) — installs preconfigured OSS frontends connected to the local server. Delivers a "ready-to-use product" for end users in minutes. v1 reference apps: **Open WebUI** (chat) and **OpenClaw** (agent).
 
-### Cinco princípios de design
+### Five design principles
 
-1. **Defaults inteligentes acima de configuração.** Toda função pública funciona sem argumentos.
-2. **API modular por domínio.** `ceia_aisdk.llm`, `ceia_aisdk.stt`, `ceia_aisdk.tts`, `ceia_aisdk.vision`, `ceia_aisdk.rag` — cada um autocontido; import não puxa o resto.
-3. **Sync-first, async-parallel.** Todo método público tem versão sync (`.chat`) e async (`.achat`) espelhadas, como `openai` e `httpx`.
-4. **Hardware transparente.** Auto-detect CUDA na inicialização, cai para CPU sem alarme. Dev pode forçar via `device="cpu"` ou env var.
-5. **Modelos são artefatos versionados e opacos.** Aliases estáveis (`llm/small@N`), download on-demand com checksum, cache determinístico, e o modelo real por trás nunca é exposto publicamente.
+1. **Smart defaults over configuration.** Every public function works without arguments.
+2. **Modular API by domain.** `ceia_aisdk.llm`, `ceia_aisdk.stt`, `ceia_aisdk.tts`, `ceia_aisdk.vision`, `ceia_aisdk.rag` — each is self-contained; importing one does not load the others.
+3. **Sync-first, async-parallel.** Every public method has mirrored sync (`.chat`) and async (`.achat`) versions, like `openai` and `httpx`.
+4. **Transparent hardware.** Automatically detects CUDA at initialization and falls back to CPU without raising an alarm. Developers can force a device via `device="cpu"` or an env var.
+5. **Models are versioned, opaque artifacts.** Stable aliases (`llm/small@N`), on-demand downloads with checksums, deterministic caching, and the actual underlying model is never exposed publicly.
 
-### Não-objetivos
+### Non-goals
 
-- Não substitui LangChain/LlamaIndex — não é framework de agentes.
-- Não roda em Apple Silicon como target primário (x86 first).
-- Não faz fine-tuning — só inferência.
-- Não hospeda servidor por padrão (embora exista modo servidor opcional).
+- Does not replace LangChain/LlamaIndex — it is not an agent framework.
+- Does not target Apple Silicon as a primary platform (x86 first).
+- Does not perform fine-tuning — inference only.
+- Does not host a server by default (although an optional server mode is available).
 
 ---
 
-## 2. Arquitetura e módulos
+## 2. Architecture and modules
 
-### Layout do pacote Python
+### Python package layout
 
 ```
 ceia_aisdk/
-├── __init__.py          # exporta helpers de topo (versão, config)
+├── __init__.py          # exports top-level helpers (version, config)
 ├── config.py            # AISDKConfig (paths, device, log level)
 ├── hardware.py          # detect_cuda(), get_device(), memory_info()
-├── registry/            # catálogo de modelos + resolver + downloader
-│   ├── catalog.py       # aliases curados (opaco) → arquivos internos
-│   ├── downloader.py    # HTTP + resume + progress bar + failover de mirrors
-│   ├── signing.py       # verificação Ed25519 do catálogo
+├── registry/            # model catalog + resolver + downloader
+│   ├── catalog.py       # curated aliases (opaque) → internal files
+│   ├── downloader.py    # HTTP + resume + progress bar + mirror failover
+│   ├── signing.py       # Ed25519 catalog verification
 │   └── cache.py         # ~/.ceia-aisdk/models/ layout, lockfiles
-├── llm/                 # texto + visão (via LLaVA/MiniCPM-V)
+├── llm/                 # text + vision (via LLaVA/MiniCPM-V)
 │   ├── model.py         # class LLM (sync)
 │   └── async_model.py   # class AsyncLLM (asyncio)
 ├── stt/                 # faster-whisper wrapper
 ├── tts/                 # Piper wrapper
-├── vision/              # atalho para LLM visual + módulos ONNX (OCR, detect)
+├── vision/              # shortcut for vision LLM + ONNX modules (OCR, detect)
 ├── rag/                 # LanceDB + BGE-small + loaders (PDF/DOCX/MD/TXT)
-├── server/              # FastAPI: rotas OpenAI-compat
+├── server/              # FastAPI: OpenAI-compatible routes
 │   └── openai_compat.py # /v1/chat/completions, /v1/embeddings, /v1/audio/*
-├── apps/                # launcher de apps OSS
-│   ├── registry.py      # catálogo de apps (openwebui, openclaw)
+├── apps/                # OSS app launcher
+│   ├── registry.py      # app catalog (openwebui, openclaw)
 │   └── runner.py        # install, configure, run, uninstall
-└── cli.py               # comando `ceia-aisdk` (Typer)
+└── cli.py               # `ceia-aisdk` command (Typer)
 ```
 
-### Backends escolhidos
+### Selected backends
 
-| Domínio | Backend | Formato | Notas |
+| Domain | Backend | Format | Notes |
 |---|---|---|---|
-| LLM + visão | `llama-cpp-python` | GGUF | Cobre chat + LLaVA/MiniCPM-V no mesmo runtime, CUDA + CPU nativos |
-| STT | `faster-whisper` | CTranslate2 | ~4x mais rápido que openai/whisper, CUDA nativo |
-| TTS | `piper-tts` | ONNX | Leve, boa qualidade, PT-BR disponível |
-| Embeddings | `sentence-transformers` + `onnxruntime` | ONNX | BGE-small default (~130MB), roda em CPU |
-| Vector store | `lancedb` | arquivo local | Zero setup, single file |
-| Visão específica (OCR/detect) | `onnxruntime` | ONNX | YOLO, PaddleOCR opcionais |
-| Server HTTP | `FastAPI` + `uvicorn` | — | Rotas OpenAI-compat |
-| CLI | `Typer` + `Rich` | — | UX moderna |
+| LLM + vision | `llama-cpp-python` | GGUF | Supports chat + LLaVA/MiniCPM-V in the same runtime, with native CUDA + CPU support |
+| STT | `faster-whisper` | CTranslate2 | ~4x faster than openai/whisper, with native CUDA support |
+| TTS | `piper-tts` | ONNX | Lightweight, good quality, PT-BR available |
+| Embeddings | `sentence-transformers` + `onnxruntime` | ONNX | BGE-small by default (~130MB), runs on CPU |
+| Vector store | `lancedb` | local file | Zero setup, single file |
+| Specialized vision (OCR/detect) | `onnxruntime` | ONNX | Optional YOLO and PaddleOCR |
+| HTTP server | `FastAPI` + `uvicorn` | — | OpenAI-compatible routes |
+| CLI | `Typer` + `Rich` | — | Modern UX |
 
-### Dependências opcionais (extras)
+### Optional dependencies (extras)
 
-- `ceia-aisdk[cuda]` — força build do `llama-cpp-python` com CUDA.
-- `ceia-aisdk[server]` — inclui FastAPI/uvicorn.
-- `ceia-aisdk[apps]` — inclui runner de apps.
+- `ceia-aisdk[cuda]` — forces a CUDA build of `llama-cpp-python`.
+- `ceia-aisdk[server]` — includes FastAPI/uvicorn.
+- `ceia-aisdk[apps]` — includes the app runner.
 
-**Instalação base:** `pip install ceia-aisdk` (~50 MB, só SDK + bindings). Modelos são pulled on-demand.
+**Base installation:** `pip install ceia-aisdk` (~50 MB, SDK + bindings only). Models are pulled on demand.
 
 ---
 
-## 3. Registry de modelos e ciclo de vida
+## 3. Model registry and lifecycle
 
-### Aliases opacos e versionados
+### Opaque, versioned aliases
 
-Todo alias curado carrega uma versão (`@N`) que fixa o artefato de forma **imutável**. Uma vez publicada, `llm/medium@3` nunca muda de arquivo — é reproduzível para sempre. O modelo real por trás **nunca** é exposto na API pública.
+Every curated alias includes a version (`@N`) that pins the artifact **immutably**. Once published, `llm/medium@3` always refers to the same file — it remains reproducible forever. The actual underlying model is **never** exposed through the public API.
 
 ```python
-LLM()                    # alias default (llm/medium@latest para a versão do SDK)
-LLM("small")             # alias sem versão → resolve para @latest da versão instalada
-LLM("small@2")           # pinning explícito, congela contra atualizações
-LLM("hf://TheBloke/...") # bypass total (dev assume responsabilidade)
+LLM()                    # default alias (llm/medium@latest for the SDK version)
+LLM("small")             # unversioned alias → resolves to @latest for the installed version
+LLM("small@2")           # explicit pinning, frozen against updates
+LLM("hf://TheBloke/...") # full bypass (developer assumes responsibility)
 LLM("/path/local.gguf")  # bring-your-own
 ```
 
 ### Update policy
 
-`@latest` de cada alias é fixado pela versão do SDK instalada. Atualizar de `ceia-aisdk 1.4` para `1.5` pode mudar o modelo atrás de `llm/medium`, mas dentro da mesma versão do SDK nunca muda. Elimina o "modelo silenciosamente atualizado de madrugada".
+Each alias's `@latest` is pinned by the installed SDK version. Upgrading from `ceia-aisdk 1.4` to `1.5` may change the model behind `llm/medium`, but it never changes within the same SDK version. This eliminates the "model silently updated overnight" problem.
 
-### Catálogo interno vs. metadata pública
+### Internal catalog vs. public metadata
 
-Arquivo interno (`ceia_aisdk/registry/_internal_catalog.yaml`, não exposto na API pública):
+Internal file (`ceia_aisdk/registry/_internal_catalog.yaml`, not exposed through the public API):
 
 ```yaml
 llm/medium@3:
@@ -152,129 +152,129 @@ llm/medium@3:
     quantization_class: standard
 ```
 
-`ceia-aisdk model info llm/medium@3` retorna **apenas a parte `public`**. Nunca a `_internal`. O submódulo `_internal_catalog` fica atrás de underscore para deixar claro "não é API".
+`ceia-aisdk model info llm/medium@3` returns **only the `public` section**. It never returns `_internal`. The `_internal_catalog` submodule uses a leading underscore to make it clear that it is "not an API."
 
-### Metadata pública exposta
+### Exposed public metadata
 
 - `license_family` (apache-2.0, mit, llama-community, gemma, custom, ...)
 - `commercial_use` (bool)
 - `context_length`
 - `size_gb`
-- `capabilities` (lista: chat, tool_use, multilingual, vision, ...)
+- `capabilities` (list: chat, tool_use, multilingual, vision, ...)
 - `quantization_class` (compact, standard, high-quality)
 
-Motivo: usuários deployando comercialmente precisam saber a licença. Compliance fica com o usuário; SDK expõe o mínimo necessário para ele decidir.
+Rationale: users deploying commercially need to know the license. Compliance remains the user's responsibility; the SDK exposes the minimum information required to make that decision.
 
-### Cache no disco (opaco)
+### On-disk cache (opaque)
 
 ```
 ~/.ceia-aisdk/
 ├── models/
 │   ├── llm/
-│   │   └── medium-v3.bin      # nome opaco, sem referência ao modelo real
+│   │   └── medium-v3.bin      # opaque name, with no reference to the actual model
 │   ├── stt/
 │   └── ...
-├── registry.lock              # snapshot da versão do catálogo
+├── registry.lock              # snapshot of the catalog version
 └── config.toml
 ```
 
-Nota: um `strings` no arquivo GGUF ainda pode vazar metadata embutida pelos autores originais. Isso é aceitável — não estamos protegendo contra atacante determinado, só evitando dependência acidental por parte do dev.
+Note: running `strings` on the GGUF file may still reveal metadata embedded by the original authors. This is acceptable — the goal is not to protect against a determined attacker, only to prevent developers from creating accidental dependencies.
 
-### Hospedagem, mirrors e failover
+### Hosting, mirrors, and failover
 
-Fonte primária dos pesos curados: **organização HuggingFace `ceia-aisdk`**. HF cobre resume (range requests), CDN global e o fluxo que empresas e firewalls já conhecem.
+Primary source for curated weights: **HuggingFace organization `ceia-aisdk`**. HF provides resume support (range requests), a global CDN, and a workflow already familiar to companies and firewalls.
 
-Cada artefato no catálogo declara uma lista ordenada de URLs com o **mesmo `sha256`**:
+Each catalog artifact declares an ordered list of URLs with the **same `sha256`**:
 
-1. HuggingFace (`huggingface.co/ceia-aisdk/...`) — primário.
-2. Um ou mais mirrors oficiais (mesmo objeto, mesmo checksum). Podem ser outro endpoint HF, object storage ou CDN; a identidade do arquivo é o hash, não o host.
-3. Se todos falharem: `DownloadError` com `.remediation` apontando para `CEIA_AISDK_CATALOG` e modo offline.
+1. HuggingFace (`huggingface.co/ceia-aisdk/...`) — primary.
+2. One or more official mirrors (same object, same checksum). These may be another HF endpoint, object storage, or a CDN; the file identity is defined by its hash, not its host.
+3. If all sources fail: `DownloadError` with `.remediation` pointing to `CEIA_AISDK_CATALOG` and offline mode.
 
-Política de failover do downloader:
+Downloader failover policy:
 
-- Tenta o próximo mirror só após erro de rede, HTTP 5xx, timeout ou checksum inválido.
-- Checksum inválido **não** é silenciado — o arquivo parcial é descartado e o próximo mirror é tentado.
-- Sem BitTorrent: complexidade, UX e superfície legal desproporcionais ao ganho.
-- Empresas / air-gap: `CEIA_AISDK_CATALOG` aponta para um catálogo próprio (HTTP ou path local). O downloader respeita as URLs daquele catálogo e não tenta a org pública.
+- Tries the next mirror only after a network error, HTTP 5xx response, timeout, or invalid checksum.
+- An invalid checksum is **not** ignored — the partial file is discarded and the next mirror is attempted.
+- No BitTorrent: its complexity, UX, and legal exposure are disproportionate to the benefit.
+- Enterprises / air-gapped environments: `CEIA_AISDK_CATALOG` points to a private catalog (HTTP or local path). The downloader honors the URLs in that catalog and does not try the public organization.
 
-O catálogo bundled no wheel é a fonte de verdade da versão instalada. Refresh remoto do catálogo é opt-in (`CEIA_AISDK_CATALOG=https://...`) e só é aceito se a assinatura Ed25519 for válida.
+The catalog bundled in the wheel is the source of truth for the installed version. Remote catalog refresh is opt-in (`CEIA_AISDK_CATALOG=https://...`) and is accepted only if the Ed25519 signature is valid.
 
-### Assinatura e verificação do catálogo
+### Catalog signing and verification
 
-O catálogo é um artefato de confiança: ele diz *o que* baixar e *qual hash* aceitar. Sem assinatura, um MITM em `CEIA_AISDK_CATALOG` (ou um mirror de catálogo) poderia trocar URL e checksum juntos.
+The catalog is a trusted artifact: it specifies *what* to download and *which hash* to accept. Without a signature, a MITM targeting `CEIA_AISDK_CATALOG` (or a catalog mirror) could change both the URL and checksum.
 
-- Algoritmo: **Ed25519**.
-- Chave pública embarcada no wheel (`ceia_aisdk/registry/keys/catalog.pub`). Rotação = nova versão do SDK.
-- Todo catálogo publicado tem `catalog.yaml` + `catalog.yaml.sig`.
-- Catálogo bundled: verificado na primeira carga do registry (integridade já reforçada pelo wheel/PyPI).
-- Catálogo remoto ou path via `CEIA_AISDK_CATALOG`: **assinatura obrigatória**. Rejeitado com `CatalogSignatureError` se faltar `.sig`, se a chave não bater ou se o payload divergir.
-- Escape hatch: `CEIA_AISDK_ALLOW_UNSIGNED_CATALOG=1` aceita catálogo sem assinatura e emite warning explícito (air-gap / lab). Default: off.
-- `ceia-aisdk model verify` revalida assinatura do catálogo em uso **e** o `sha256` de cada artefato em cache.
+- Algorithm: **Ed25519**.
+- Public key embedded in the wheel (`ceia_aisdk/registry/keys/catalog.pub`). Rotation requires a new SDK version.
+- Every published catalog includes `catalog.yaml` + `catalog.yaml.sig`.
+- Bundled catalog: verified when the registry is first loaded (integrity is already reinforced by the wheel/PyPI).
+- Remote catalog or path provided via `CEIA_AISDK_CATALOG`: **signature required**. Rejected with `CatalogSignatureError` if `.sig` is missing, the key does not match, or the payload differs.
+- Escape hatch: `CEIA_AISDK_ALLOW_UNSIGNED_CATALOG=1` accepts an unsigned catalog and emits an explicit warning (air gap / lab). Default: off.
+- `ceia-aisdk model verify` revalidates the signature of the active catalog **and** the `sha256` of each cached artifact.
 
-### Download e integridade
+### Download and integrity
 
-- CLI: `ceia-aisdk model pull llm/small`, ou lazy no primeiro uso da API.
-- HTTP com resume (range requests), progress bar via Rich, checksum obrigatório, failover conforme acima.
-- Mirrors e catálogo privado via `CEIA_AISDK_CATALOG`.
+- CLI: `ceia-aisdk model pull llm/small`, or lazy download on first API use.
+- HTTP with resume (range requests), a Rich progress bar, mandatory checksum validation, and failover as described above.
+- Mirrors and private catalog configured via `CEIA_AISDK_CATALOG`.
 
-### Bundle essenciais (não automático)
+### Essentials bundle (not automatic)
 
-`pip install ceia-aisdk` **não** baixa modelos. Cada módulo, no primeiro uso, puxa só o alias default daquele domínio (`LLM()` → `llm/medium`, `STT()` → `stt/fast`, etc.).
+`pip install ceia-aisdk` **does not** download models. On first use, each module pulls only the default alias for its domain (`LLM()` → `llm/medium`, `STT()` → `stt/fast`, etc.).
 
-Para preparar um conjunto mínimo offline (CI, demo, máquina sem rede depois):
+To prepare a minimum offline set (CI, demo, or a machine that will later have no network access):
 
 ```bash
 ceia-aisdk model pull --essentials
 ```
 
-Aliases do bundle essentials (sempre as versões `@latest` pinadas pela versão do SDK):
+Essentials bundle aliases (always the `@latest` versions pinned by the SDK version):
 
-| Alias | Papel | Ordem de grandeza |
+| Alias | Role | Approximate size |
 |---|---|---|
-| `llm/small` | chat viável em CPU | ~1–2 GB |
-| `stt/fast` | transcrição | ~150 MB |
-| `tts/pt-br` | voz PT-BR (default do bundle; `tts/en-us` entra se `CEIA_AISDK_TTS_LOCALE=en-us`) | ~60 MB |
+| `llm/small` | viable CPU chat | ~1–2 GB |
+| `stt/fast` | transcription | ~150 MB |
+| `tts/pt-br` | PT-BR voice (bundle default; `tts/en-us` is included if `CEIA_AISDK_TTS_LOCALE=en-us`) | ~60 MB |
 | `embed/default` | RAG / embeddings | ~130 MB |
 
-`ceia-aisdk bundle create` continua sendo o mecanismo para *packagers* escolherem um manifesto arbitrário (não só essentials) e embutirem os pesos no artefato do app.
+`ceia-aisdk bundle create` remains the mechanism for *packagers* to choose an arbitrary manifest (not only essentials) and embed the weights in the app artifact.
 
-### Comandos de gestão
+### Management commands
 
 - `ceia-aisdk model list`
 - `ceia-aisdk model pull <alias>`
 - `ceia-aisdk model pull --essentials`
 - `ceia-aisdk model rm <alias>`
-- `ceia-aisdk model info <alias>` — mostra só metadata pública
-- `ceia-aisdk model verify` — re-checa assinatura do catálogo + integridade dos arquivos
-- `ceia-aisdk model where <alias>` — imprime caminho no cache
+- `ceia-aisdk model info <alias>` — shows public metadata only
+- `ceia-aisdk model verify` — rechecks the catalog signature + file integrity
+- `ceia-aisdk model where <alias>` — prints the cache path
 
-### Trade-off assumido
+### Accepted trade-off
 
-Devs que precisam debugar profundamente vão usar `hf://` URLs explícitas ou modelos locais. É o preço da opacidade — registrado nas docs.
+Developers who need in-depth debugging will use explicit `hf://` URLs or local models. That is the cost of opacity — documented accordingly.
 
 ---
 
-## 4. API concreta por módulo
+## 4. Concrete API by module
 
-Sync/async espelhados; zero-config no default; escape hatches disponíveis.
+Mirrored sync/async APIs; zero-config by default; escape hatches available.
 
-### LLM (texto + tool use)
+### LLM (text + tool use)
 
 ```python
 from ceia_aisdk.llm import LLM
 
 llm = LLM()                                     # llm/medium@latest, auto-device
-resp = llm.chat("Explica RAG em uma frase")     # str
+resp = llm.chat("Explain RAG in one sentence")  # str
 
-for chunk in llm.stream("Escreve um haiku"):    # iterador de str
+for chunk in llm.stream("Write a haiku"):        # str iterator
     print(chunk, end="", flush=True)
 
-# Sessão multi-turn
-chat = llm.session(system="Você é conciso.")
-chat.send("Oi")
-chat.send("Me lembra o que perguntei antes?")
+# Multi-turn session
+chat = llm.session(system="You are concise.")
+chat.send("Hi")
+chat.send("Remind me what I asked before?")
 
-# Async espelhado
+# Mirrored async API
 from ceia_aisdk.llm import AsyncLLM
 llm = AsyncLLM()
 resp = await llm.chat("...")
@@ -282,7 +282,7 @@ async for chunk in llm.stream("..."):
     ...
 ```
 
-### STT (áudio → texto)
+### STT (audio → text)
 
 ```python
 from ceia_aisdk.stt import STT
@@ -291,33 +291,33 @@ stt = STT()                                          # stt/fast@latest
 text = stt.transcribe("audio.wav")                   # str
 result = stt.transcribe("audio.wav", timestamps=True)
 
-# Streaming de microfone
+# Microphone streaming
 for partial in stt.stream_microphone():
     print(partial)
 ```
 
-### TTS (texto → áudio)
+### TTS (text → audio)
 
 ```python
 from ceia_aisdk.tts import TTS
 
 tts = TTS(voice="pt-br")                             # tts/pt-br@latest
-tts.speak("Olá, mundo").play()
-tts.speak("Olá").save("out.wav")
+tts.speak("Hello, world").play()
+tts.speak("Hello").save("out.wav")
 ```
 
-### Visão (imagem + prompt)
+### Vision (image + prompt)
 
 ```python
 from ceia_aisdk.vision import Vision
 
 v = Vision()                                         # vision/small@latest
-answer = v.describe("foto.jpg", prompt="O que está errado nessa configuração?")
+answer = v.describe("photo.jpg", prompt="What is wrong with this configuration?")
 
-# Utilitários específicos (ONNX)
+# Specialized utilities (ONNX)
 from ceia_aisdk.vision import ocr, detect
-texto = ocr("nota-fiscal.png")
-boxes = detect("garagem.jpg", classes=["car", "person"])
+text = ocr("invoice.png")
+boxes = detect("garage.jpg", classes=["car", "person"])
 ```
 
 ### RAG (zero-config)
@@ -325,32 +325,32 @@ boxes = detect("garagem.jpg", classes=["car", "person"])
 ```python
 from ceia_aisdk.rag import RAG
 
-kb = RAG("meu-kb")                                   # ~/.ceia-aisdk/rag/meu-kb
+kb = RAG("my-kb")                                    # ~/.ceia-aisdk/rag/my-kb
 kb.add("./docs/")                                    # PDF, MD, DOCX, TXT, HTML
-kb.add("https://exemplo.com/pagina.html")
-answer = kb.ask("Como configurar X?")                # resposta + sources
+kb.add("https://example.com/page.html")
+answer = kb.ask("How do I configure X?")             # answer + sources
 
-# Escape hatch para só retrieval
-chunks = kb.retrieve("Como configurar X?", top_k=5)
+# Escape hatch for retrieval only
+chunks = kb.retrieve("How do I configure X?", top_k=5)
 ```
 
-### Servidor OpenAI-compat (CLI)
+### OpenAI-compatible server (CLI)
 
 ```bash
 ceia-aisdk serve --port 11434 --host 127.0.0.1
-# Qualquer cliente OpenAI aponta base_url para localhost:11434
+# Any OpenAI client can point base_url to localhost:11434
 ```
 
 ### App launcher (CLI)
 
-Apps de referência do v1, ambos OSS e apontando ao `ceia-aisdk serve`:
+v1 reference apps, both OSS and connected to `ceia-aisdk serve`:
 
-| App | Papel | Instalação | Fontes |
+| App | Role | Installation | Sources |
 |---|---|---|---|
-| `openwebui` | Chat multimodal no browser | Docker (preferencial) ou pip | [Open WebUI](https://github.com/open-webui/open-webui) |
-| `openclaw` | Agente self-hosted (canais + Control UI + tools) | npm (`openclaw@latest`) | [openclaw/openclaw](https://github.com/openclaw/openclaw) · [docs](https://docs.openclaw.ai) · MIT |
+| `openwebui` | Multimodal chat in the browser | Docker (preferred) or pip | [Open WebUI](https://github.com/open-webui/open-webui) |
+| `openclaw` | Self-hosted agent (channels + Control UI + tools) | npm (`openclaw@latest`) | [openclaw/openclaw](https://github.com/openclaw/openclaw) · [docs](https://docs.openclaw.ai) · MIT |
 
-OpenClaw (v2026.8.x / 2.0) aceita provider OpenAI-compat via `baseUrl`. O runner grava em `~/.openclaw/openclaw.json` um provider local:
+OpenClaw (v2026.8.x / 2.0) accepts an OpenAI-compatible provider via `baseUrl`. The runner writes a local provider to `~/.openclaw/openclaw.json`:
 
 ```json5
 {
@@ -369,13 +369,13 @@ OpenClaw (v2026.8.x / 2.0) aceita provider OpenAI-compat via `baseUrl`. O runner
 }
 ```
 
-Usa-se `openai-completions` (`/v1/chat/completions`), não o dialecto nativo do Ollama. Tool calling precisa estar correto nessa rota — é contrato do modo servidor.
+The system uses `openai-completions` (`/v1/chat/completions`), not Ollama's native dialect. Tool calling must work correctly on this route — it is part of the server mode contract.
 
 ```bash
 ceia-aisdk app list                    # openwebui, openclaw
-ceia-aisdk app install openwebui       # baixa e configura apontando ao server local
+ceia-aisdk app install openwebui       # downloads and configures it to use the local server
 ceia-aisdk app install openclaw
-ceia-aisdk app run openwebui           # abre no browser
+ceia-aisdk app run openwebui           # opens it in the browser
 ceia-aisdk app stop openwebui
 ```
 
@@ -383,14 +383,14 @@ ceia-aisdk app stop openwebui
 
 ## 5. Cross-cutting concerns
 
-### Configuração em camadas
+### Layered configuration
 
-Precedência do mais forte para o mais fraco:
+Precedence from strongest to weakest:
 
-1. Kwargs por chamada: `LLM(device="cpu", cache_dir="/tmp")`
+1. Per-call kwargs: `LLM(device="cpu", cache_dir="/tmp")`
 2. Env vars: `CEIA_AISDK_DEVICE`, `CEIA_AISDK_CACHE_DIR`, `CEIA_AISDK_LOG_LEVEL`, `CEIA_AISDK_CATALOG`, `CEIA_AISDK_OFFLINE`, `CEIA_AISDK_ALLOW_UNSIGNED_CATALOG`, `CEIA_AISDK_TTS_LOCALE`
-3. Arquivo de config: `~/.ceia-aisdk/config.toml`
-4. Defaults do SDK
+3. Config file: `~/.ceia-aisdk/config.toml`
+4. SDK defaults
 
 ```toml
 # ~/.ceia-aisdk/config.toml
@@ -398,199 +398,199 @@ Precedência do mais forte para o mais fraco:
 device = "auto"          # auto | cpu | cuda | cuda:0
 cache_dir = "~/.ceia-aisdk"
 log_level = "INFO"
-offline = false          # se true, falha em vez de tentar download
+offline = false          # if true, fail instead of attempting a download
 
 [llm]
 default_alias = "medium"
 context_length = 8192
 
 [server]
-host = "127.0.0.1"       # NUNCA 0.0.0.0 por default
+host = "127.0.0.1"       # NEVER 0.0.0.0 by default
 port = 11434
 require_token = false
 ```
 
-### Detecção de hardware
+### Hardware detection
 
-Na primeira chamada de cada módulo, `get_device()`:
+On the first call to each module, `get_device()`:
 
-- Tenta importar `torch.cuda` / checar `nvidia-smi` e `cuda_runtime`.
-- Se disponível: verifica VRAM livre; se não couber o modelo pedido, cai para CPU com warning.
-- Log claro: `[ceia_aisdk.hardware] Using device: cuda:0 (RTX 3060, 12GB VRAM, 8.2GB free)`.
-- CLI `ceia-aisdk doctor` imprime detecção completa, versões de bindings, drivers e sanity checks. Vira o comando de "abrir issue".
+- Attempts to import `torch.cuda` / check `nvidia-smi` and `cuda_runtime`.
+- If available: checks free VRAM; if the requested model does not fit, falls back to CPU with a warning.
+- Clear log message: `[ceia_aisdk.hardware] Using device: cuda:0 (RTX 3060, 12GB VRAM, 8.2GB free)`.
+- The `ceia-aisdk doctor` CLI command prints full detection results, binding versions, drivers, and sanity checks. It becomes the command to run before opening an issue.
 
-### Logging & observabilidade
+### Logging & observability
 
-- `logging` padrão do Python, namespace `ceia_aisdk.*`. Silent por default (`WARNING`).
-- Callback opcional para métricas: `ceia_aisdk.set_metrics_hook(fn)` recebe eventos `{event, module, alias, duration_ms, tokens, ...}` — dev pluga em Prometheus/OpenTelemetry.
-- **Telemetria out-of-the-box: zero.** Nada é enviado para servidor externo sem opt-in explícito (`CEIA_AISDK_TELEMETRY=1`). Local-first significa privacy-first.
+- Standard Python `logging`, under the `ceia_aisdk.*` namespace. Silent by default (`WARNING`).
+- Optional metrics callback: `ceia_aisdk.set_metrics_hook(fn)` receives `{event, module, alias, duration_ms, tokens, ...}` events — developers can connect it to Prometheus/OpenTelemetry.
+- **Out-of-the-box telemetry: zero.** Nothing is sent to an external server without explicit opt-in (`CEIA_AISDK_TELEMETRY=1`). Local-first means privacy-first.
 
-### Hierarquia de erros
+### Error hierarchy
 
 ```
-AISDKError                   # raiz
-├── ModelNotFoundError       # alias inexistente
-├── DownloadError            # rede, checksum, disco cheio, mirrors esgotados
-├── CatalogSignatureError    # catálogo remoto sem sig válida
+AISDKError                   # root
+├── ModelNotFoundError       # nonexistent alias
+├── DownloadError            # network, checksum, full disk, exhausted mirrors
+├── CatalogSignatureError    # remote catalog without a valid signature
 ├── DeviceError              # CUDA OOM, driver mismatch
-├── BackendError             # falha do llama.cpp/whisper/etc.
-└── LicenseError             # tentativa de uso comercial de modelo não-comercial
+├── BackendError             # llama.cpp/whisper/etc. failure
+└── LicenseError             # attempted commercial use of a non-commercial model
 ```
 
-Cada erro tem `.remediation` (string amigável): `"CUDA OOM. Try a smaller alias like 'llm/small' or set device='cpu'."`
+Each error has `.remediation` (a user-friendly string): `"CUDA OOM. Try a smaller alias like 'llm/small' or set device='cpu'."`
 
-### Thread-safety & concorrência
+### Thread safety & concurrency
 
-- Instâncias de `LLM/STT/TTS` **não** são thread-safe (backend nativo compartilhado). Docstrings deixam explícito.
-- Concorrência real: `AsyncLLM` (asyncio) ou pool de instâncias.
-- Server mode gerencia pool internamente — dev não vê.
+- `LLM/STT/TTS` instances are **not** thread-safe (shared native backend). Docstrings state this explicitly.
+- True concurrency: `AsyncLLM` (asyncio) or a pool of instances.
+- Server mode manages the pool internally — developers do not see it.
 
-### Segurança do server mode
+### Server mode security
 
-- Bind em `127.0.0.1` por default (nunca `0.0.0.0`).
-- `--token <segredo>` habilita Bearer auth.
-- CORS restrito por default (localhost); flag `--cors <origins>` afrouxa explicitamente.
-- Sem persistência de conversas no server; stateless entre requests.
+- Binds to `127.0.0.1` by default (never `0.0.0.0`).
+- `--token <secret>` enables Bearer auth.
+- CORS is restricted by default (localhost); the `--cors <origins>` flag explicitly relaxes it.
+- No conversation persistence on the server; stateless between requests.
 
-### Empacotamento para apps end-user
+### Packaging for end-user apps
 
-- Guia + templates com PyInstaller e Briefcase.
-- App empacotado herda cache do SDK; pode incluir "modelos essenciais" pré-baixados via `ceia-aisdk bundle create`.
+- Guide + templates for PyInstaller and Briefcase.
+- A packaged app inherits the SDK cache; it can include pre-downloaded "essential models" via `ceia-aisdk bundle create`.
 
 ---
 
-## 6. Etapas de desenvolvimento
+## 6. Development stages
 
-Ordem por dependência técnica. Escopo completo — sem cortes de MVP nem prazos.
+Ordered by technical dependency. Full scope — no MVP cuts or timelines.
 
-### Etapa 1 — Fundações
+### Stage 1 — Foundations
 
-Base sobre a qual tudo se apoia.
+The foundation supporting everything else.
 
-- Setup do repo (`pyproject.toml` com nome `ceia-aisdk`, extras, CI matriz Linux/Windows).
-- Sistema de config em camadas (`AISDKConfig`, env vars `CEIA_AISDK_*`, TOML em `~/.ceia-aisdk/`).
-- Módulo `hardware.py` (detecção CUDA, VRAM, escolha de device com fallback).
-- Hierarquia de erros (`AISDKError` + subclasses com `.remediation`, incluindo `CatalogSignatureError`).
-- Logging namespaced (`ceia_aisdk.*`).
-- CLI base com `Typer`, comando `ceia-aisdk`, subcomando `ceia-aisdk doctor`.
+- Repository setup (`pyproject.toml` named `ceia-aisdk`, extras, Linux/Windows CI matrix).
+- Layered config system (`AISDKConfig`, `CEIA_AISDK_*` env vars, TOML in `~/.ceia-aisdk/`).
+- `hardware.py` module (CUDA detection, VRAM, device selection with fallback).
+- Error hierarchy (`AISDKError` + subclasses with `.remediation`, including `CatalogSignatureError`).
+- Namespaced logging (`ceia_aisdk.*`).
+- Base CLI using `Typer`, the `ceia-aisdk` command, and the `ceia-aisdk doctor` subcommand.
 
-### Etapa 2 — Registry e cache de modelos
+### Stage 2 — Model registry and cache
 
-Pré-requisito de todos os módulos de inferência.
+Prerequisite for every inference module.
 
-- Schema do catálogo interno (YAML) com aliases versionados (`@N` imutável) e lista de mirrors por artefato.
-- Camada de metadata pública (opacidade — só `license_family`, capabilities, size).
-- Assinatura Ed25519 (`catalog.yaml.sig`), chave pública no wheel, rejeição de catálogo remoto unsigned (salvo escape hatch).
-- Resolver de aliases (`llm/medium` → `llm/medium@N`).
-- Downloader com resume, checksum, failover de mirrors, progress bar.
+- Internal catalog schema (YAML) with versioned aliases (immutable `@N`) and a list of mirrors per artifact.
+- Public metadata layer (opacity — only `license_family`, capabilities, size).
+- Ed25519 signature (`catalog.yaml.sig`), public key in the wheel, rejection of unsigned remote catalogs (except through the escape hatch).
+- Alias resolver (`llm/medium` → `llm/medium@N`).
+- Downloader with resume, checksum validation, mirror failover, and a progress bar.
 - Cache manager (`~/.ceia-aisdk/models/`, lockfiles, cleanup).
-- Subcomandos CLI: `model pull/list/rm/info/verify/where` e `model pull --essentials`.
+- CLI subcommands: `model pull/list/rm/info/verify/where` and `model pull --essentials`.
 
-### Etapa 3 — Módulo LLM
+### Stage 3 — LLM module
 
-Primeiro backend real; valida toda a infra anterior.
+First real backend; validates all previous infrastructure.
 
-- Integração `llama-cpp-python` com auto-device.
-- `LLM` sync: `.chat`, `.stream`, `.session`, tool-use.
-- `AsyncLLM` espelhado.
-- Curadoria dos aliases `llm/small|medium|large@N` no catálogo interno.
+- `llama-cpp-python` integration with automatic device selection.
+- Sync `LLM`: `.chat`, `.stream`, `.session`, tool use.
+- Mirrored `AsyncLLM`.
+- Curation of `llm/small|medium|large@N` aliases in the internal catalog.
 
-### Etapa 4 — Módulos de voz
+### Stage 4 — Voice modules
 
-Reutilizam registry/cache da Etapa 2.
+Reuse the registry/cache from Stage 2.
 
-- STT via `faster-whisper` (transcribe, timestamps, stream de microfone) — sync + async.
+- STT via `faster-whisper` (transcribe, timestamps, microphone stream) — sync + async.
 - TTS via `piper-tts` (speak → play/save) — sync + async.
 - Aliases `stt/fast|accurate@N`, `tts/pt-br|en-us@N`.
 
-### Etapa 5 — Módulo de visão
+### Stage 5 — Vision module
 
-Depende do backend LLM da Etapa 3.
+Depends on the LLM backend from Stage 3.
 
-- Multimodal via `Vision().describe(image, prompt)` reaproveitando runtime da Etapa 3 com LLaVA/MiniCPM-V.
-- Utilitários ONNX independentes: `vision.ocr()`, `vision.detect()`.
+- Multimodal support via `Vision().describe(image, prompt)`, reusing the Stage 3 runtime with LLaVA/MiniCPM-V.
+- Independent ONNX utilities: `vision.ocr()`, `vision.detect()`.
 - Aliases `vision/small@N`, `vision/ocr@N`, `vision/detect@N`.
 
-### Etapa 6 — Módulo RAG
+### Stage 6 — RAG module
 
-Depende do LLM (para `.ask`); `.retrieve` é independente.
+Depends on the LLM (for `.ask`); `.retrieve` is independent.
 
-- Backend de embeddings via `sentence-transformers` / ONNX (aliases `embed/default@N`, `embed/multilingual@N`).
-- Integração `lancedb` (KB por nome, arquivo local).
-- Loaders (PDF, DOCX, MD, TXT, HTML) + chunking recursivo.
-- API `RAG.add / ask / retrieve / list / delete`.
+- Embeddings backend via `sentence-transformers` / ONNX (`embed/default@N`, `embed/multilingual@N` aliases).
+- `lancedb` integration (named KB, local file).
+- Loaders (PDF, DOCX, MD, TXT, HTML) + recursive chunking.
+- `RAG.add / ask / retrieve / list / delete` API.
 
-### Etapa 7 — Modo servidor
+### Stage 7 — Server mode
 
-Depende dos módulos anteriores; expõe tudo via HTTP.
+Depends on the previous modules; exposes everything over HTTP.
 
-- FastAPI + uvicorn como extra opcional (`ceia-aisdk[server]`).
-- Rotas OpenAI-compat: `/v1/chat/completions` (SSE stream + tool calling), `/v1/embeddings`, `/v1/audio/transcriptions`, `/v1/audio/speech`, `/v1/models` (retorna só aliases opacos).
-- Bearer auth opcional, CORS restrito, bind localhost por default.
-- Pool interno de instâncias com backpressure.
+- FastAPI + uvicorn as an optional extra (`ceia-aisdk[server]`).
+- OpenAI-compatible routes: `/v1/chat/completions` (SSE stream + tool calling), `/v1/embeddings`, `/v1/audio/transcriptions`, `/v1/audio/speech`, `/v1/models` (returns opaque aliases only).
+- Optional Bearer auth, restricted CORS, localhost binding by default.
+- Internal instance pool with backpressure.
 
-### Etapa 8 — App launcher
+### Stage 8 — App launcher
 
-Depende do modo servidor (Etapa 7).
+Depends on server mode (Stage 7).
 
-- Registry de apps (YAML: método de instalação por app — docker / pip / npm / git+script).
-- Runner: install, configure para apontar ao server local, run, stop, status, uninstall.
-- Configs bundled:
+- App registry (YAML: installation method per app — docker / pip / npm / git+script).
+- Runner: install, configure to use the local server, run, stop, status, uninstall.
+- Bundled configs:
   - **Open WebUI** — Docker, `OPENAI_API_BASE_URL=http://127.0.0.1:11434/v1`.
-  - **OpenClaw** — npm, provider `ceia` com `baseUrl` local e `api: openai-completions` (ver §4).
-- Subcomandos CLI `app list/install/run/stop/status/uninstall`.
+  - **OpenClaw** — npm, `ceia` provider with local `baseUrl` and `api: openai-completions` (see §4).
+- CLI subcommands: `app list/install/run/stop/status/uninstall`.
 
-### Etapa 9 — Suporte a empacotamento
+### Stage 9 — Packaging support
 
-Independente das últimas etapas; pode ir em paralelo.
+Independent of the later stages; can proceed in parallel.
 
-- Comando `ceia-aisdk bundle create` (gera manifesto de modelos pré-baixados).
-- `ceia-aisdk model pull --essentials` como atalho do manifesto mínimo.
-- Template PyInstaller.
-- Template Briefcase.
-- Guia de distribuição para apps end-user.
+- `ceia-aisdk bundle create` command (generates a manifest of pre-downloaded models).
+- `ceia-aisdk model pull --essentials` as a shortcut for the minimum manifest.
+- PyInstaller template.
+- Briefcase template.
+- Distribution guide for end-user apps.
 
-### Etapa 10 — Documentação e exemplos
+### Stage 10 — Documentation and examples
 
-Transversal, mas ganha corpo depois de cada etapa acima.
+Cross-cutting, but becomes more substantial after each stage above.
 
-- Referência de API (mkdocs-material).
-- Quickstarts por módulo.
-- Cookbooks (assistente de voz, chat com documentos, análise de screenshots).
-- Docs específicas: opacidade, licenças, empacotamento, troubleshooting, verificação do catálogo.
+- API reference (mkdocs-material).
+- Quickstarts by module.
+- Cookbooks (voice assistant, chat with documents, screenshot analysis).
+- Specialized docs: opacity, licensing, packaging, troubleshooting, catalog verification.
 
 ---
 
-## Log de decisões
+## Decision log
 
-| # | Decisão | Alternativas descartadas |
+| # | Decision | Rejected alternatives |
 |---|---|---|
-| 1 | Público-alvo: devs e usuários finais (via apps) | Apenas devs; apenas pesquisadores |
-| 2 | Linguagem: Python com apps de referência empacotados | Rust/C++ com bindings; Node/TS; C#/Go |
-| 3 | Escopo: multimodal completo desde o v1 | Focar em LLM+RAG; focar em voz; focar em visão |
-| 4 | Hardware: CPU + NVIDIA CUDA auto-detect | Só CPU; multi-backend (ROCm/Vulkan); mini-PC/edge |
-| 5 | Distribuição de modelos: registry on-demand (estilo Ollama) | Bundled; híbrido; bring-your-own-model |
-| 6 | Estilo de API: módulos separados por domínio | Funcional; façade unificada; múltiplos coexistindo |
-| 7 | RAG: zero-config | Config em camadas; componentes componíveis; wrapper de LangChain |
-| 8 | Concorrência: sync + async paralelos (`chat`/`achat`) | Sync + streaming opcional; streaming-first; async-first |
-| 9 | Catálogo: curados + custom por URL/path | Só curados; catálogo aberto tipo HF |
-| 10 | Opacidade: aliases versionados imutáveis (`@N`) | Full opaque; opaco com backdoor; runtime opaco + doc revela |
-| 11 | Metadata pública: só família de licença + capabilities | Esconder também licença; expor tudo |
-| 12 | Produto em 3 camadas: lib + server + app launcher | Só lib; lib + app único |
-| 13 | Nome oficial: `ceia-aisdk` (import `ceia_aisdk`) | `aisdk` (PyPI ocupado + genérico); `aisdk-local` |
-| 14 | Apps bundled: Open WebUI + OpenClaw | Continue; Aider; Open Interpreter; adiar o agente |
-| 15 | Pesos: org HF `ceia-aisdk` + mirrors no catálogo + `CEIA_AISDK_CATALOG` | Só HF; CDN própria como primária; torrent; só self-host no v1 |
-| 16 | Catálogo assinado Ed25519; remoto unsigned só com escape hatch | Confiar só no wheel; adiar assinatura |
-| 17 | Sem download na instalação; lazy por módulo + `model pull --essentials` | Auto-baixar essentials no primeiro import; nenhum bundle nomeado |
+| 1 | Target audience: developers and end users (via apps) | Developers only; researchers only |
+| 2 | Language: Python with packaged reference apps | Rust/C++ with bindings; Node/TS; C#/Go |
+| 3 | Scope: full multimodal support starting in v1 | Focus on LLM+RAG; focus on voice; focus on vision |
+| 4 | Hardware: CPU + automatic NVIDIA CUDA detection | CPU only; multiple backends (ROCm/Vulkan); mini PC/edge |
+| 5 | Model distribution: on-demand registry (Ollama style) | Bundled; hybrid; bring-your-own-model |
+| 6 | API style: separate modules by domain | Functional; unified facade; multiple coexisting styles |
+| 7 | RAG: zero-config | Layered config; composable components; LangChain wrapper |
+| 8 | Concurrency: parallel sync + async (`chat`/`achat`) | Sync + optional streaming; streaming-first; async-first |
+| 9 | Catalog: curated + custom by URL/path | Curated only; open HF-style catalog |
+| 10 | Opacity: immutable versioned aliases (`@N`) | Fully opaque; opaque with a backdoor; opaque runtime + documentation reveals details |
+| 11 | Public metadata: license family + capabilities only | Hide the license too; expose everything |
+| 12 | Three-layer product: library + server + app launcher | Library only; library + a single app |
+| 13 | Official name: `ceia-aisdk` (import `ceia_aisdk`) | `aisdk` (PyPI name occupied + generic); `aisdk-local` |
+| 14 | Bundled apps: Open WebUI + OpenClaw | Continue; Aider; Open Interpreter; postpone the agent |
+| 15 | Weights: HF org `ceia-aisdk` + catalog mirrors + `CEIA_AISDK_CATALOG` | HF only; first-party CDN as primary; torrent; self-hosted only in v1 |
+| 16 | Ed25519-signed catalog; unsigned remote catalogs only through an escape hatch | Trust the wheel alone; postpone signing |
+| 17 | No download during installation; lazy per module + `model pull --essentials` | Automatically download essentials on first import; no named bundle |
 
 ---
 
-## Questões resolvidas (2026-09-01)
+## Resolved questions (2026-09-01)
 
-Todas as questões abertas do design original foram fechadas nesta revisão.
+All open questions from the original design were resolved in this revision.
 
-- **Nome definitivo.** Produto/PyPI/CLI: `ceia-aisdk`. Import: `ceia_aisdk`. Cache: `~/.ceia-aisdk`. Env: `CEIA_AISDK_*`. `aisdk` no PyPI está ocupado por um stub de 2021 e colide conceitualmente com o AI SDK da Vercel.
-- **Agente de código OSS.** OpenClaw confirmado ([github.com/openclaw/openclaw](https://github.com/openclaw/openclaw), MIT, [docs.openclaw.ai](https://docs.openclaw.ai), v2026.8.x / 2.0). Aceita `baseUrl` OpenAI-compat; o launcher configura o provider `ceia` contra `ceia-aisdk serve`. Segundo app: Open WebUI.
-- **Mirrors do catálogo.** Org HuggingFace `ceia-aisdk` como primário; cada artefato lista mirrors com o mesmo `sha256`; failover automático; `CEIA_AISDK_CATALOG` para air-gap. Sem torrent.
-- **Assinatura do catálogo.** Ed25519, chave pública no wheel, `catalog.yaml.sig` obrigatório em catálogo remoto. `CEIA_AISDK_ALLOW_UNSIGNED_CATALOG=1` é o escape hatch. `model verify` cobre sig + checksums. Novo erro: `CatalogSignatureError`.
-- **Bundle essenciais.** Nenhum download silencioso no `pip install`. Lazy no primeiro uso de cada módulo. `ceia-aisdk model pull --essentials` baixa `llm/small`, `stt/fast`, `tts/pt-br` (ou `tts/en-us` via locale) e `embed/default`.
+- **Final name.** Product/PyPI/CLI: `ceia-aisdk`. Import: `ceia_aisdk`. Cache: `~/.ceia-aisdk`. Env: `CEIA_AISDK_*`. `aisdk` on PyPI is occupied by a stub from 2021 and conceptually conflicts with Vercel's AI SDK.
+- **OSS coding agent.** OpenClaw confirmed ([github.com/openclaw/openclaw](https://github.com/openclaw/openclaw), MIT, [docs.openclaw.ai](https://docs.openclaw.ai), v2026.8.x / 2.0). Accepts an OpenAI-compatible `baseUrl`; the launcher configures the `ceia` provider to use `ceia-aisdk serve`. Second app: Open WebUI.
+- **Catalog mirrors.** HuggingFace org `ceia-aisdk` as primary; each artifact lists mirrors with the same `sha256`; automatic failover; `CEIA_AISDK_CATALOG` for air-gapped environments. No torrent.
+- **Catalog signing.** Ed25519, public key in the wheel, `catalog.yaml.sig` required for remote catalogs. `CEIA_AISDK_ALLOW_UNSIGNED_CATALOG=1` is the escape hatch. `model verify` covers the signature + checksums. New error: `CatalogSignatureError`.
+- **Essentials bundle.** No silent downloads during `pip install`. Lazy download on first use of each module. `ceia-aisdk model pull --essentials` downloads `llm/small`, `stt/fast`, `tts/pt-br` (or `tts/en-us` via locale), and `embed/default`.

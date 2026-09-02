@@ -1,88 +1,88 @@
-# PRD 02 — Módulo LLM
+# PRD 02 — LLM Module
 
-| Campo | Valor |
+| Field | Value |
 |---|---|
 | ID | `PRD-02` |
 | Status | Draft |
-| Slug Speckit | `llm-module` |
-| Depende de | PRD-00, PRD-01 |
-| Desbloqueia | PRD 04, 05, 06; **primeiro PyPI** |
-| PyPI | **`ceia-aisdk==0.1.0` — primeiro upload público.** |
-| Plano de origem | Etapa 3 |
+| Speckit Slug | `llm-module` |
+| Depends on | PRD-00, PRD-01 |
+| Unlocks | PRD 04, 05, 06; **first PyPI release** |
+| PyPI | **`ceia-aisdk==0.1.0` — first public upload.** |
+| Source Plan | Stage 3 |
 
 ---
 
 ### 1. Executive Summary
 
-- **Problem Statement**: O produto público só existe quando um dev faz `from ceia_aisdk.llm import LLM` e recebe uma resposta local. Sem isso, foundations e registry são infra invisível.
-- **Proposed Solution**: Módulo `ceia_aisdk.llm` sobre `llama-cpp-python`, com `LLM` / `AsyncLLM`, chat, stream, session, device auto (CPU + CUDA), aliases `llm/small|medium|large@N`, e **publicação do pacote no PyPI como 0.1.0**.
+- **Problem Statement**: The public product only exists when a developer runs `from ceia_aisdk.llm import LLM` and receives a local response. Without this, the foundations and registry are invisible infrastructure.
+- **Proposed Solution**: A `ceia_aisdk.llm` module built on `llama-cpp-python`, with `LLM` / `AsyncLLM`, chat, stream, session, automatic device selection (CPU + CUDA), aliases `llm/small|medium|large@N`, and **publication of package version 0.1.0 on PyPI**.
 - **Success Criteria**:
-  - Em Linux x86_64 limpo, CPU, rede ok: do `pip install ceia-aisdk` **no PyPI público** (runtime CPU do llama-cpp incluso ou puxado como dep) até a primeira string de `LLM().chat("Diga apenas: ok")` em **≤ 15 minutos**, incluindo o pull de `llm/small`.
-  - `ceia-aisdk==0.1.0` está no índice; classifiers declaram Linux; a página do PyPI mostra o quickstart e “Linux x86_64 only”.
-  - A mesma chamada com `ceia-aisdk[cuda]` numa GPU NVIDIA com VRAM ≥ necessidade de `llm/small` conclui no device `cuda` (log contém `cuda`); se VRAM não couber, cai para CPU com WARNING e ainda devolve string.
-  - `LLM().chat` e o primeiro token de `LLM().stream` em `llm/small` CPU: primeiro token ≤ 10 s após o modelo já residente em RAM (warm).
-  - Import `ceia_aisdk` continua sem carregar `llama_cpp`; só `from ceia_aisdk.llm import LLM` (ou a primeira chamada) carrega o backend.
-  - Matriz de testes: chat, stream, session (2 turnos com memória), device forçado `cpu`, e pelo menos 1 teste de `AsyncLLM` no mesmo comportamento.
+  - On a clean Linux x86_64 system with a CPU and working network: from `pip install ceia-aisdk` **from public PyPI** (with the llama-cpp CPU runtime included or pulled as a dependency) to the first string returned by `LLM().chat("Say only: ok")` in **≤ 15 minutes**, including the `llm/small` pull.
+  - `ceia-aisdk==0.1.0` is available on the index; classifiers declare Linux support; the PyPI page shows the quickstart and “Linux x86_64 only”.
+  - The same call with `ceia-aisdk[cuda]` on an NVIDIA GPU with VRAM ≥ the requirement of `llm/small` completes on the `cuda` device (the log contains `cuda`); if VRAM is insufficient, it falls back to CPU with a WARNING and still returns a string.
+  - For `LLM().chat` and the first token from `LLM().stream` with `llm/small` on CPU: first token ≤ 10 s once the model is already resident in RAM (warm).
+  - Importing `ceia_aisdk` still does not load `llama_cpp`; only `from ceia_aisdk.llm import LLM` (or the first call) loads the backend.
+  - Test matrix: chat, stream, session (2 turns with memory), forced `cpu` device, and at least 1 `AsyncLLM` test covering the same behavior.
 
 ---
 
 ### 2. User Experience & Functionality
 
-- **User Personas**: hobbyista que descobriu o pacote no PyPI; script que pina `llm/small@2` e `device="cpu"`; usuário CUDA que espera “just works”.
+- **User Personas**: a hobbyist who discovered the package on PyPI; a script that pins `llm/small@2` and `device="cpu"`; a CUDA user who expects it to “just work”.
 
 - **User Stories**:
 
   **US-02-1 — First chat zero-config**
-  - As a desenvolvedor, I want to instanciar `LLM()` e chamar `.chat` so that eu valide o SDK em minutos.
+  - As a developer, I want to instantiate `LLM()` and call `.chat` so that I can validate the SDK in minutes.
   - **Acceptance Criteria**:
-    - **Default de lançamento: `llm/small@latest`**, não `medium`. Contestação ao plano: 4.3 GB quebra o KPI de 15 min em banda doméstica típica.
-    - `config.toml [llm] default_alias = "medium"` e `LLM("medium")` continuam válidos.
-    - Retorno de `.chat` é `str` não vazio para prompt de smoke.
-    - Primeiro uso dispara `ensure_local` (PRD 01) com progress no TTY.
-    - Offline + miss → `DownloadError`; não há hang > 1 s tentando rede se `offline`.
+    - **Launch default: `llm/small@latest`**, not `medium`. Challenge to the plan: 4.3 GB breaks the 15-minute KPI on a typical home internet connection.
+    - `config.toml [llm] default_alias = "medium"` and `LLM("medium")` remain valid.
+    - `.chat` returns a non-empty `str` for the smoke prompt.
+    - First use triggers `ensure_local` (PRD 01) with a progress indicator on a TTY.
+    - Offline + cache miss → `DownloadError`; there is no > 1 s hang while attempting network access when `offline`.
 
-  **US-02-2 — Stream e sessão**
-  - As a desenvolvedor, I want to stream e multi-turn so that o SDK sirva um chat real.
+  **US-02-2 — Streaming and session**
+  - As a developer, I want streaming and multi-turn interaction so that the SDK can support a real chat.
   - **Acceptance Criteria**:
-    - `.stream(prompt)` é iterador de `str`; concatenação == conteúdo que `.chat` produziria sob mesma seed/temperature fixas no teste (ou equivalência documentada se o backend não for bit-stable — nesse caso o teste checa ≥ 1 chunk e texto final não vazio).
-    - `.session(system=...)` mantém histórico; o segundo `.send` evidencia o primeiro (fixture com pergunta factual curta).
-    - Thread-safety: docstring e docs dizem “não é thread-safe”.
+    - `.stream(prompt)` is an iterator of `str`; concatenation == the content that `.chat` would produce under the same fixed seed/temperature in the test (or documented equivalence if the backend is not bit-stable—in that case, the test checks ≥ 1 chunk and non-empty final text).
+    - `.session(system=...)` retains history; the second `.send` demonstrates awareness of the first (fixture with a short factual question).
+    - Thread safety: the docstring and documentation state “not thread-safe”.
 
-  **US-02-3 — Async espelhado**
-  - As a desenvolvedor, I want to `AsyncLLM` com `.chat` / `.stream` / sessão so that eu embuta em asyncio.
+  **US-02-3 — Mirrored async API**
+  - As a developer, I want `AsyncLLM` with `.chat` / `.stream` / sessions so that I can embed it in asyncio.
   - **Acceptance Criteria**:
-    - Mesma semântica da classe sync.
-    - Não bloquear o event loop no hot path de tokens além do permitido pelo binding (documentar se `llama-cpp-python` força executor). Teste: `asyncio` + timeout.
+    - Same semantics as the synchronous class.
+    - Do not block the event loop in the token hot path beyond what the binding permits (document if `llama-cpp-python` requires an executor). Test: `asyncio` + timeout.
 
-  **US-02-4 — CUDA de verdade**
-  - As a desenvolvedor com NVIDIA, I want to `pip install ceia-aisdk[cuda]` so that a inferência use a GPU sem eu escolher flags do llama.cpp.
+  **US-02-4 — Real CUDA support**
+  - As a developer with NVIDIA hardware, I want to `pip install ceia-aisdk[cuda]` so that inference uses the GPU without requiring me to select llama.cpp flags.
   - **Acceptance Criteria**:
-    - Extra `[cuda]` instala/builda o binding com CUDA (pin e receita no README; wheel pré-buildado se o time conseguir — senão doc de compile ≤ 20 linhas).
-    - `device="auto"` + GPU ok → layers na GPU; `doctor` após o extra mostra binding CUDA = yes.
-    - OOM → `DeviceError` com remediation (`llm/small` ou `device="cpu"`), ou fallback CPU se ainda não começou a gerar.
-    - O relógio de 15 min **não** inclui compile CUDA. CUDA é gate de qualidade, não do KPI âncora.
+    - The `[cuda]` extra installs/builds the binding with CUDA (pin and instructions in the README; prebuilt wheel if the team can provide one—otherwise, compilation documentation of ≤ 20 lines).
+    - `device="auto"` + working GPU → layers on the GPU; `doctor` after installing the extra shows CUDA binding = yes.
+    - OOM → `DeviceError` with remediation guidance (`llm/small` or `device="cpu"`), or CPU fallback if generation has not started yet.
+    - The 15-minute clock **does not** include CUDA compilation. CUDA is a quality gate, not part of the anchor KPI.
 
-  **US-02-5 — Tool use (P1, não P0)**
-  - As a desenvolvedor, I want to passar tools no chat so that o servidor (PRD 06) possa expor tools depois.
+  **US-02-5 — Tool use (P1, not P0)**
+  - As a developer, I want to pass tools to chat so that the server (PRD 06) can expose tools later.
   - **Acceptance Criteria**:
-    - API de tools alinhada ao formato OpenAI-ish (nome, json schema, chamada → resultado).
-    - Pelo menos 1 teste com tool stub (`get_weather`) em que o modelo curado do catálogo *ou* um fixture/gravação demonstre o loop. Se o alias default não for confiável para tools, o teste usa um alias `llm/medium` marcado `capabilities: [tool_use]` e fica P1 — **não bloqueia** o merge do first-chat.
-    - Aliases sem `tool_use` levantam erro claro se tools forem passadas.
+    - The tools API is aligned with the OpenAI-ish format (name, JSON schema, call → result).
+    - At least 1 test with a tool stub (`get_weather`) in which either the curated catalog model *or* a fixture/recording demonstrates the loop. If the default alias is not reliable for tools, the test uses an `llm/medium` alias marked `capabilities: [tool_use]` and remains P1—it **does not block** the first-chat merge.
+    - Aliases without `tool_use` raise a clear error if tools are passed.
 
-  **US-02-6 — Publicar 0.1.0 no PyPI**
-  - As a desenvolvedor externo, I want to `pip install ceia-aisdk` sem clonar o repo so that o produto exista de fato.
+  **US-02-6 — Publish 0.1.0 on PyPI**
+  - As an external developer, I want to `pip install ceia-aisdk` without cloning the repository so that the product actually exists.
   - **Acceptance Criteria**:
-    - Versão `0.1.0` no índice público.
-    - Extra `[cuda]` instalável via `pip install ceia-aisdk[cuda]`.
-    - Página do projeto declara Linux x86_64; não promete Windows.
-    - Wheel/sdist **não** inclui pesos GGUF.
+    - Version `0.1.0` on the public index.
+    - The `[cuda]` extra can be installed via `pip install ceia-aisdk[cuda]`.
+    - The project page declares Linux x86_64 support; it does not promise Windows support.
+    - Wheel/sdist **does not** include GGUF weights.
 
 - **Non-Goals**:
-  - Fine-tuning, embeddings (PRD 05), visão (PRD 04), server HTTP (PRD 06).
-  - Multi-backend (vLLM, Ollama como runtime).
-  - Garantir qualidade de bench vs GPT-cloud.
-  - Default `medium` no `LLM()`.
-  - Binário, instalador, bundle de pesos no wheel.
+  - Fine-tuning, embeddings (PRD 05), vision (PRD 04), HTTP server (PRD 06).
+  - Multiple backends (vLLM, Ollama as a runtime).
+  - Guaranteeing benchmark quality versus cloud GPT.
+  - Default `medium` in `LLM()`.
+  - Binary, installer, or weight bundle in the wheel.
 
 ---
 
@@ -91,12 +91,12 @@
 - **Tool Requirements**:
   - Runtime: `llama-cpp-python` (GGUF).
   - Registry: `ensure_local("llm/small|medium|large")`.
-  - Hardware: `get_device()` + `size_gb` do catálogo para fallback de VRAM.
+  - Hardware: `get_device()` + catalog `size_gb` for VRAM fallback.
 - **Evaluation Strategy**:
-  - Smoke obrigatório: prompt fixo, assert em substring ou regex (`ok` / não-vazio + max 64 tokens).
-  - Golden de sessão: 2 turnos, assert de correferência simples.
-  - Benchmark informal (não-gate): tokens/s CPU vs CUDA na máquina de referência; registrar no `doctor` ou log DEBUG.
-  - Tool-use: teste P1 com modelo capable ou skip explícito se o artefato de CI for stub.
+  - Mandatory smoke test: fixed prompt, assertion on a substring or regex (`ok` / non-empty + max 64 tokens).
+  - Session golden test: 2 turns, assertion of simple coreference.
+  - Informal benchmark (not a gate): CPU versus CUDA tokens/s on the reference machine; record in `doctor` or the DEBUG log.
+  - Tool use: P1 test with a capable model, or an explicit skip if the CI artifact is a stub.
 
 ---
 
@@ -104,26 +104,26 @@
 
 - **Architecture Overview**:
   - `ceia_aisdk/llm/model.py` (`LLM`), `async_model.py` (`AsyncLLM`).
-  - Construtor: resolve alias → `ensure_local` → instancia o binding com n_ctx de config (`[llm] context_length`, default 8192).
-  - Fallback VRAM: se `size_gb` > livre * margem (documentar 0.9), device efetivo = cpu + WARNING.
+  - Constructor: resolve alias → `ensure_local` → instantiate the binding with the configured n_ctx (`[llm] context_length`, default 8192).
+  - VRAM fallback: if `size_gb` > available * margin (document 0.9), effective device = cpu + WARNING.
 - **Integration Points**:
-  - Catálogo com três aliases LLM curados (artefatos reais ou placeholders até a org HF existir; CI usa fixture GGUF tiny).
-  - CLI: nenhum subcomando novo obrigatório além do que o 01 já tem; quickstart no README.
+  - Catalog with three curated LLM aliases (real artifacts or placeholders until the HF organization exists; CI uses a tiny GGUF fixture).
+  - CLI: no mandatory new subcommand beyond those already provided by PRD 01; quickstart in the README.
 - **Security & Privacy**:
-  - Prompts não saem da máquina. Sem telemetria de conteúdo.
-  - Instância não thread-safe — documentar risco de corrida, não “consertar” com lock global silencioso.
+  - Prompts do not leave the machine. No content telemetry.
+  - Instance is not thread-safe—document the race-condition risk; do not “fix” it with a silent global lock.
 
 ---
 
 ### 5. Risks & Roadmap
 
 - **Phased Rollout**:
-  - **P0 (gate do 0.1.0)**: `LLM` sync chat/stream/session + default `small` + CPU + extra `[cuda]` na máquina de referência + **upload PyPI** + README do índice.
-  - **P1** (pode ir no 0.1.0 ou no primeiro patch): `AsyncLLM` + tool-use + fallback VRAM. Tool-use **não** bloqueia o 0.1.0.
-  - **Depois**: default `medium` só se p95 pull+chat < 15 min na banda-alvo (TBD Mbps). Minors 03–07 no mesmo projeto PyPI.
+  - **P0 (0.1.0 gate)**: synchronous `LLM` chat/stream/session + default `small` + CPU + `[cuda]` extra on the reference machine + **PyPI upload** + index README.
+  - **P1** (may ship in 0.1.0 or the first patch): `AsyncLLM` + tool use + VRAM fallback. Tool use **does not** block 0.1.0.
+  - **Later**: default `medium` only if p95 pull+chat < 15 min on the target bandwidth (TBD Mbps). Minors 03–07 in the same PyPI project.
 - **Technical Risks**:
-  - Build CUDA do `llama-cpp-python` é a falha #1 de onboarding. Mitigação: wheels documentados; `doctor` distingue “GPU visível” vs “binding sem CUDA”.
-  - GGUF tiny de CI não prova qualidade. Mitigação: smoke de CI + checklist manual com alias real.
-  - Default `small` vs plano (`medium`): divergência consciente; reverter exige atualizar este PRD e o KPI.
+  - The CUDA build of `llama-cpp-python` is the #1 onboarding failure. Mitigation: documented wheels; `doctor` distinguishes “GPU visible” from “binding without CUDA”.
+  - The tiny CI GGUF does not prove quality. Mitigation: CI smoke test + manual checklist with a real alias.
+  - Default `small` versus the plan (`medium`): intentional divergence; reverting it requires updating this PRD and the KPI.
 
-**Speckit:** feature `llm-module`. A spec deve separar P0/P1 nos critérios de aceite.
+**Speckit:** feature `llm-module`. The spec must separate P0/P1 in the acceptance criteria.

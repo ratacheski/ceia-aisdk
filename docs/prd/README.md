@@ -1,78 +1,78 @@
-# Programa de PRDs — CEIA AI SDK (`ceia-aisdk`)
+# PRD Program — CEIA AI SDK (`ceia-aisdk`)
 
-**Fonte de visão:** [docs/plans/2026-07-29-ai-sdk-x86-design.md](../plans/2026-07-29-ai-sdk-x86-design.md)
-**Data do programa:** 2026-09-01
-**Posicionamento:** produto público no PyPI — lib + CLI Python, Linux x86_64, competindo com Ollama/LM Studio no eixo *embutível em código*.
-**KPI âncora:** time-to-first-chat ≤ 15 min em Linux x86_64 limpo, CPU, rede ok, **a partir de `pip install ceia-aisdk` no índice público**.
-**OS alvo desta série:** Linux x86_64 apenas (Ubuntu 22.04+ como referência). Windows e Apple Silicon estão fora.
-**Canal:** só PyPI. Sem binário, instalador ou loja.
+**Vision source:** [docs/plans/2026-07-29-ai-sdk-x86-design.md](../plans/2026-07-29-ai-sdk-x86-design.md)
+**Program date:** 2026-09-01
+**Positioning:** public product on PyPI — Python library + CLI, Linux x86_64, competing with Ollama/LM Studio on the *embeddable in code* axis.
+**Anchor KPI:** time-to-first-chat ≤ 15 min on a clean Linux x86_64 system, CPU, working network, **starting from `pip install ceia-aisdk` from the public index**.
+**Target OS for this series:** Linux x86_64 only (Ubuntu 22.04+ as the reference). Windows and Apple Silicon are out of scope.
+**Channel:** PyPI only. No binary, installer, or store.
 
-Este diretório é a fonte de requisitos. Speckit entra **depois** — os PRDs são o contrato agora; specify/plan/tasks só quando o time pedir. Quando for a hora, **um PRD = uma feature Speckit**.
+This directory is the requirements source of truth. Speckit comes **later** — the PRDs are the contract for now; specify/plan/tasks only when the team requests them. When the time comes, **one PRD = one Speckit feature**.
 
-## Recorte incremental (obrigatório)
+## Incremental scope (mandatory)
 
-O plano original trata o escopo multimodal como “v1 sem cortes”. Isso é visão de produto, não fatia de entrega. Os PRDs abaixo entregam a visão **em série**, cada um shippável e testável.
+The original plan treats the multimodal scope as an “uncut v1.” That is a product vision, not a delivery slice. The PRDs below deliver the vision **in sequence**, each one shippable and testable.
 
-Cortes explícitos vs. o plano (descoberta 2026-09-01):
+Explicit cuts from the plan (discovery on 2026-09-01):
 
-| Item do plano | Destino no programa |
+| Plan item | Destination in the program |
 |---|---|
-| Ed25519 + mirrors oficiais + `CatalogSignatureError` | Fora do MVP. Catálogo bundled + `sha256`. Volta como feature futura, não como PRD desta série. |
-| `vision.ocr()` / `vision.detect()` (ONNX) | Fora do MVP. Visão = só `Vision.describe`. |
-| Docs como etapa 10 isolada | **Não há PRD de docs.** Cada PRD inclui o incremento de documentação daquela fatia. |
-| CUDA auto-detect + extra `[cuda]` | **Dentro.** Primeiro demo exige inferência CUDA real no PRD 02. |
-| Sync + async espelhados | **Dentro**, a partir do PRD 02 (não no 00). |
-| App launcher Open WebUI + OpenClaw | **Dentro**, no PRD 07, depois do server. OpenClaw é P1 do 07, não do caminho crítico até first-chat. |
-| Windows + CI matriz dual | **Fora desta série.** Linux x86_64 only. Windows vira PRD futuro, não “best effort” silencioso. |
-| PyInstaller / Briefcase / `bundle create` | **Fora.** Canal único = PyPI. PRD 08 [retirado](08-packaging.md). |
+| Ed25519 + official mirrors + `CatalogSignatureError` | Out of the MVP. Bundled catalog + `sha256`. Returns as a future feature, not as a PRD in this series. |
+| `vision.ocr()` / `vision.detect()` (ONNX) | Out of the MVP. Vision = `Vision.describe` only. |
+| Docs as a standalone stage 10 | **There is no docs PRD.** Each PRD includes the documentation increment for that slice. |
+| CUDA auto-detect + `[cuda]` extra | **Included.** The first demo requires real CUDA inference in PRD 02. |
+| Mirrored sync + async APIs | **Included**, starting with PRD 02 (not 00). |
+| Open WebUI + OpenClaw app launcher | **Included** in PRD 07, after the server. OpenClaw is P1 in 07, not on the critical path to first-chat. |
+| Windows + dual-matrix CI | **Out of this series.** Linux x86_64 only. Windows becomes a future PRD, not silent “best effort.” |
+| PyInstaller / Briefcase / `bundle create` | **Out.** Single channel = PyPI. PRD 08 [retired](08-packaging.md). |
 
-## Decisões ratificadas (2026-09-01)
+## Ratified decisions (2026-09-01)
 
-Divergem do plano original e valem para todos os PRDs.
+These diverge from the original plan and apply to all PRDs.
 
-1. **`LLM()` defaulta para `llm/small` no lançamento.** Medium só via config ou `LLM("medium")`.
-2. **Sem `LicenseError`.** Metadata de licença é informativa.
-3. **Foundations sem registry.**
-4. **OpenClaw é P1 do PRD 07.** Caminho crítico = lib + `serve` + Open WebUI.
-5. **Tool-use é P1 no PRD 02**, não bloqueia first-chat.
-6. **Linux x86_64 only.** Sem suporte, CI ou templates Windows nesta série.
-7. **Speckit ainda não começa.** Constitution e specify ficam para um próximo passo explícito.
-8. **Distribuição só via PyPI.** Sem binário, instalador ou `bundle create`. `--essentials` é cache, não release.
-9. **Primeiro PyPI público = fechamento do PRD 02**, versão **0.1.0**. Os PRDs 00 e 01 não sobem ao índice (só `pip install -e .` no repo). 03–07 republicam o mesmo pacote (minor, na ordem de merge).
+1. **`LLM()` defaults to `llm/small` at launch.** Medium is available only through config or `LLM("medium")`.
+2. **No `LicenseError`.** License metadata is informational.
+3. **Foundations without a registry.**
+4. **OpenClaw is P1 in PRD 07.** Critical path = library + `serve` + Open WebUI.
+5. **Tool use is P1 in PRD 02** and does not block first-chat.
+6. **Linux x86_64 only.** No Windows support, CI, or templates in this series.
+7. **Speckit does not start yet.** Constitution and specify remain for an explicit next step.
+8. **Distribution only through PyPI.** No binary, installer, or `bundle create`. `--essentials` populates the cache; it is not a release.
+9. **First public PyPI release = completion of PRD 02**, version **0.1.0**. PRDs 00 and 01 are not uploaded to the index (only `pip install -e .` from the repository). PRDs 03–07 republish the same package (minor versions, in merge order).
 
-## Publicação PyPI
+## PyPI publishing
 
-| Momento | Ação | Por quê |
+| Milestone | Action | Rationale |
 |---|---|---|
-| PRD 00–01 | Sem upload ao PyPI público. Metadata (`name`, classifiers Linux, `requires-python`) já no `pyproject.toml`. TestPyPI opcional só para ensaiar o pipeline. | Pacote sem `LLM().chat()` é ruído: `pip install ceia-aisdk` não cumpre a promessa. |
-| **PRD 02** | **Primeiro publish: `ceia-aisdk==0.1.0`** (lib + CLI + registry + LLM + extra `[cuda]`). Classifiers: POSIX/Linux, Python 3.11–3.13. README do PyPI = quickstart de 15 min. | Primeira fatia em que o KPI âncora é mensurável pelo usuário externo. |
-| PRD 03–07 | Novo *minor* do mesmo projeto a cada PRD merged (`0.2.0`, `0.3.0`, …). Extras `[server]` e `[apps]` só aparecem na versão que os entrega. | Um único produto no PyPI; features incrementais, não pacotes novos. |
+| PRD 00–01 | No upload to public PyPI. Metadata (`name`, Linux classifiers, `requires-python`) is already in `pyproject.toml`. TestPyPI is optional and used only to rehearse the pipeline. | A package without `LLM().chat()` is noise: `pip install ceia-aisdk` does not fulfill the promise. |
+| **PRD 02** | **First publish: `ceia-aisdk==0.1.0`** (library + CLI + registry + LLM + `[cuda]` extra). Classifiers: POSIX/Linux, Python 3.11–3.13. PyPI README = 15-minute quickstart. | First slice in which the anchor KPI can be measured by an external user. |
+| PRD 03–07 | New *minor* version of the same project for each merged PRD (`0.2.0`, `0.3.0`, …). Extras `[server]` and `[apps]` appear only in the version that delivers them. | A single product on PyPI; incremental features, not new packages. |
 
-Não existe release “desktop”. Modelos **não** vão no wheel — só o SDK; pesos caem no cache via registry.
+There is no “desktop” release. Models are **not** included in the wheel — only the SDK is; weights are placed in the cache through the registry.
 
-## Ordem de entrega
+## Delivery order
 
-| # | PRD | Slug Speckit | Depende de | Incremento visível | PyPI |
+| # | PRD | Speckit slug | Depends on | Visible increment | PyPI |
 |---|---|---|---|---|---|
-| 00 | [Foundations](00-foundations.md) | `sdk-foundations` | — | `pip install -e .` + `doctor` | Não publica |
-| 01 | [Model registry](01-model-registry.md) | `model-registry` | 00 | `model pull/list/info` + cache | Não publica |
-| 02 | [LLM](02-llm.md) | `llm-module` | 00, 01 | `LLM().chat()` ≤15 min; extra `[cuda]` | **`0.1.0` (primeiro)** |
-| 03 | [Voz](03-voice.md) | `voice-stt-tts` | 00, 01 | `STT` + `TTS` | Minor seguinte |
-| 04 | [Visão](04-vision.md) | `vision-describe` | 02 | `Vision.describe` | Minor seguinte |
-| 05 | [RAG](05-rag.md) | `rag-module` | 01, 02 | `RAG.add` / `ask` / `retrieve` | Minor seguinte |
-| 06 | [Server](06-server.md) | `openai-server` | 02 (+ 03–05 se já existirem) | `ceia-aisdk serve` | Minor + extra `[server]` |
-| 07 | [App launcher](07-app-launcher.md) | `app-launcher` | 06 | `app install openwebui` | Minor + extra `[apps]` |
-| — | [08 Packaging](08-packaging.md) | — | — | Retirado | — |
+| 00 | [Foundations](00-foundations.md) | `sdk-foundations` | — | `pip install -e .` + `doctor` | Not published |
+| 01 | [Model registry](01-model-registry.md) | `model-registry` | 00 | `model pull/list/info` + cache | Not published |
+| 02 | [LLM](02-llm.md) | `llm-module` | 00, 01 | `LLM().chat()` ≤15 min; `[cuda]` extra | **`0.1.0` (first)** |
+| 03 | [Voice](03-voice.md) | `voice-stt-tts` | 00, 01 | `STT` + `TTS` | Next minor |
+| 04 | [Vision](04-vision.md) | `vision-describe` | 02 | `Vision.describe` | Next minor |
+| 05 | [RAG](05-rag.md) | `rag-module` | 01, 02 | `RAG.add` / `ask` / `retrieve` | Next minor |
+| 06 | [Server](06-server.md) | `openai-server` | 02 (+ 03–05 if already available) | `ceia-aisdk serve` | Minor + `[server]` extra |
+| 07 | [App launcher](07-app-launcher.md) | `app-launcher` | 06 | `app install openwebui` | Minor + `[apps]` extra |
+| — | [08 Packaging](08-packaging.md) | — | — | Retired | — |
 
-PRDs 03–05 podem avançar em paralelo depois do 02, desde que não bloqueiem o 06. O 06 deve expor só os módulos já implementados. O número *minor* segue a ordem de merge, não o número do PRD.
+PRDs 03–05 may proceed in parallel after 02, provided they do not block 06. PRD 06 must expose only modules that have already been implemented. The *minor* number follows merge order, not the PRD number.
 
-## Speckit (adiado)
+## Speckit (deferred)
 
-Quando o time autorizar: ratificar [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) (ainda é template) e só então `/speckit-specify` por PRD, na ordem da tabela.
+When authorized by the team: ratify [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) (it is still a template), and only then run `/speckit-specify` for each PRD, in the order shown in the table.
 
-## Baseline técnico
+## Technical baseline
 
-- Python **3.11–3.13**, x86_64, **Linux** (Ubuntu 22.04+ de referência).
-- CI: Linux only a partir do PRD 00.
-- Fora: Windows, Apple Silicon, ROCm, Vulkan, empacotamento desktop.
-- Canal de release: PyPI apenas (`ceia-aisdk` + extras). Primeiro índice público no PRD 02.
+- Python **3.11–3.13**, x86_64, **Linux** (Ubuntu 22.04+ as the reference).
+- CI: Linux only, starting with PRD 00.
+- Out of scope: Windows, Apple Silicon, ROCm, Vulkan, desktop packaging.
+- Release channel: PyPI only (`ceia-aisdk` + extras). First public index release in PRD 02.

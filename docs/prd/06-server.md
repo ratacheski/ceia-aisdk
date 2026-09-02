@@ -1,108 +1,108 @@
-# PRD 06 — Modo servidor OpenAI-compat
+# PRD 06 — OpenAI-compatible server mode
 
-| Campo | Valor |
+| Field | Value |
 |---|---|
 | ID | `PRD-06` |
 | Status | Draft |
-| Slug Speckit | `openai-server` |
-| Depende de | PRD-02; expõe 03–05 se já merged |
-| Desbloqueia | PRD 07; qualquer cliente do ecossistema |
-| PyPI | Minor seguinte + extra `[server]` no mesmo pacote. |
-| Plano de origem | Etapa 7 |
+| Speckit Slug | `openai-server` |
+| Depends on | PRD-02; exposes 03–05 if already merged |
+| Unlocks | PRD 07; any ecosystem client |
+| PyPI | Next minor + `[server]` extra in the same package. |
+| Source Plan | Stage 7 |
 
 ---
 
 ### 1. Executive Summary
 
-- **Problem Statement**: Lib Python sozinha não ganha de Ollama no ecossistema. Sem HTTP OpenAI-compat, Continue, LibreChat e LangChain não apontam para o SDK.
-- **Proposed Solution**: Extra `ceia-aisdk[server]` com FastAPI/uvicorn, `ceia-aisdk serve`, rotas `/v1/*` OpenAI-compat, bind localhost, token opcional, pool interno.
+- **Problem Statement**: A Python library alone cannot compete with Ollama in the ecosystem. Without OpenAI-compatible HTTP, Continue, LibreChat, and LangChain cannot point to the SDK.
+- **Proposed Solution**: The `ceia-aisdk[server]` extra with FastAPI/uvicorn, `ceia-aisdk serve`, OpenAI-compatible `/v1/*` routes, localhost binding, optional token, and an internal pool.
 - **Success Criteria**:
-  - `ceia-aisdk serve` (com extra) escuta `127.0.0.1:11434` e `GET /v1/models` devolve só aliases opacos, nunca nomes HF, em ≤ 2 s após ready.
-  - `POST /v1/chat/completions` sem stream e com `stream: true` (SSE) reproduzem o comportamento do `LLM` do PRD 02 para o mesmo prompt (texto não vazio; stream tem ≥ 1 chunk `data:`).
-  - Cliente oficial `openai` Python (ou httpx) com `base_url=http://127.0.0.1:11434/v1` completa um chat em teste de integração.
-  - Bind default nunca é `0.0.0.0`. Request sem Bearer quando `--token` foi passado → 401 em 100% dos casos.
-  - Rotas de módulos não instalados/não implementados → 404 ou 501 com corpo JSON estável, sem traceback.
+  - `ceia-aisdk serve` (with the extra) listens on `127.0.0.1:11434`, and `GET /v1/models` returns only opaque aliases, never HF names, in ≤ 2 s after ready.
+  - `POST /v1/chat/completions` without streaming and with `stream: true` (SSE) reproduce the behavior of the PRD 02 `LLM` for the same prompt (non-empty text; stream has ≥ 1 `data:` chunk).
+  - The official Python `openai` client (or httpx) with `base_url=http://127.0.0.1:11434/v1` completes a chat in an integration test.
+  - The default bind address is never `0.0.0.0`. A request without Bearer authentication when `--token` was provided → 401 in 100% of cases.
+  - Routes for modules that are not installed or not implemented → 404 or 501 with a stable JSON body and no traceback.
 
 ---
 
 ### 2. User Experience & Functionality
 
-- **User Personas**: hobbyista que aponta o cliente OpenAI para localhost; serviço Python que sobe `ceia-aisdk serve`; operador que liga `--token`.
+- **User Personas**: hobbyist pointing an OpenAI client to localhost; Python service running `ceia-aisdk serve`; operator enabling `--token`.
 
 - **User Stories**:
 
-  **US-06-1 — Subir o server**
-  - As a desenvolvedor, I want to `ceia-aisdk serve` so that qualquer cliente OpenAI fale com o SDK.
+  **US-06-1 — Start the server**
+  - As a developer, I want to run `ceia-aisdk serve` so that any OpenAI client can communicate with the SDK.
   - **Acceptance Criteria**:
-    - Extra `[server]` puxa FastAPI + uvicorn. Sem o extra, o comando explica como instalar.
+    - The `[server]` extra installs FastAPI + uvicorn. Without the extra, the command explains how to install it.
     - Flags: `--host` (default 127.0.0.1), `--port` (11434), `--token`, `--cors`.
-    - Ready log contém URL absoluta.
+    - The ready log contains an absolute URL.
 
   **US-06-2 — Chat completions + models**
-  - As a desenvolvedor, I want to `/v1/chat/completions` e `/v1/models` so that eu substitua um endpoint OpenAI.
+  - As a developer, I want to use `/v1/chat/completions` and `/v1/models` so that I can replace an OpenAI endpoint.
   - **Acceptance Criteria**:
-    - Campos mínimos: `model`, `messages`, `stream`, `temperature`, `max_tokens`.
-    - `model` é alias opaco (`llm/small` etc.).
-    - Sem persistência de conversa no server; cada request é stateless além do pool do modelo.
+    - Minimum fields: `model`, `messages`, `stream`, `temperature`, `max_tokens`.
+    - `model` is an opaque alias (`llm/small`, etc.).
+    - No conversation persistence on the server; each request is stateless apart from the model pool.
 
-  **US-06-3 — Rotas dos outros módulos (adaptativo)**
-  - As a desenvolvedor, I want to embeddings e áudio se os PRDs 03/05 existirem so that o server cresça sem retrabalho.
+  **US-06-3 — Routes for other modules (adaptive)**
+  - As a developer, I want embeddings and audio if PRDs 03/05 exist so that the server can grow without rework.
   - **Acceptance Criteria**:
-    - Se PRD 05 merged: `/v1/embeddings`.
-    - Se PRD 03 merged: `/v1/audio/transcriptions`, `/v1/audio/speech`.
-    - Visão: se o cliente mandar image_url/base64 em chat e o PRD 04 existir, o server encaminha; senão 400 claro.
-    - Tools no schema OpenAI só se P1 do PRD 02 estiver feito; senão 400 “tools not available”.
+    - If PRD 05 is merged: `/v1/embeddings`.
+    - If PRD 03 is merged: `/v1/audio/transcriptions`, `/v1/audio/speech`.
+    - Vision: if the client sends image_url/base64 in chat and PRD 04 exists, the server forwards it; otherwise, return a clear 400.
+    - Tools in the OpenAI schema only if P1 of PRD 02 is complete; otherwise, return 400 “tools not available”.
 
-  **US-06-4 — Segurança localhost**
-  - As a operador, I want to o server não abrir a LAN por default so that um `serve` não exponha a GPU na rede.
+  **US-06-4 — Localhost security**
+  - As an operator, I want the server not to bind to the LAN by default so that running `serve` does not expose the GPU over the network.
   - **Acceptance Criteria**:
-    - Default 127.0.0.1. CORS default só origens localhost.
-    - `--cors` explícito para afrouxar.
+    - Default 127.0.0.1. Default CORS allows only localhost origins.
+    - Explicit `--cors` to relax the restriction.
     - Token: header `Authorization: Bearer`.
 
 - **Non-Goals**:
-  - Compat 100% com cada campo obscuro da API OpenAI (assistants, batches, files, fine-tune).
-  - Auth multi-user, TLS nativo (reverse proxy é doc).
-  - UI web própria.
+  - 100% compatibility with every obscure OpenAI API field (assistants, batches, files, fine-tune).
+  - Multi-user auth, native TLS (reverse proxy is documented).
+  - Custom web UI.
   - App launcher (PRD 07).
-  - Redistribuir o SDK como binário; o extra `[server]` é só dependência pip.
+  - Redistributing the SDK as a binary; the `[server]` extra is only a pip dependency.
 
 ---
 
 ### 3. AI System Requirements (If Applicable)
 
-- **Tool Requirements**: FastAPI, uvicorn, módulos já entregues. Pool de instâncias LLM (e outros) com fila.
+- **Tool Requirements**: FastAPI, uvicorn, modules already delivered. Pool of LLM instances (and others) with a queue.
 - **Evaluation Strategy**:
-  - Teste `TestClient`/httpx: models, chat, stream SSE, 401.
-  - Teste de backpressure: N requests paralelos > tamanho do pool → 429 ou espera com timeout documentado (escolher **429 após fila máxima**, valor na spec, ex. queue=8).
-  - Contrato OpenAI: validar JSON schema das respostas happy-path.
+  - `TestClient`/httpx test: models, chat, SSE stream, 401.
+  - Backpressure test: N parallel requests > pool size → 429 or wait with a documented timeout (choose **429 after the maximum queue size**, value in the spec, e.g., queue=8).
+  - OpenAI contract: validate the JSON schema of happy-path responses.
 
 ---
 
 ### 4. Technical Specifications
 
 - **Architecture Overview**:
-  - `ceia_aisdk/server/openai_compat.py` + entry `serve`.
-  - Pool: 1 instância default do alias pedido; não thread-safe por instância (já no 02) — o server serializa ou isola.
+  - `ceia_aisdk/server/openai_compat.py` + `serve` entry point.
+  - Pool: 1 default instance of the requested alias; not thread-safe per instance (already established in 02) — the server serializes or isolates.
 - **Integration Points**:
-  - Porta 11434 de propósito (drop-in vs Ollama). Conflito se Ollama estiver no ar → erro de bind com remediation “mude `--port` ou pare o Ollama”.
-  - Extra `[server]` declarado neste PRD (não no 00).
+  - Port 11434 intentionally (drop-in vs Ollama). Conflict if Ollama is running → bind error with remediation guidance: “change `--port` or stop Ollama”.
+  - The `[server]` extra is declared in this PRD (not in 00).
 - **Security & Privacy**:
-  - Localhost + token opcional + CORS fechado.
-  - Sem logar `messages` em INFO. DEBUG pode, atrás de flag.
-  - Stateless: não gravar histórico em disco.
+  - Localhost + optional token + restrictive CORS.
+  - Do not log `messages` at INFO. DEBUG may do so when enabled by a flag.
+  - Stateless: do not write history to disk.
 
 ---
 
 ### 5. Risks & Roadmap
 
 - **Phased Rollout**:
-  - **P0**: serve + `/v1/models` + `/v1/chat/completions` (stream e não) + auth/CORS + extra `[server]` no PyPI.
-  - **P1**: embeddings/audio/vision/tools conforme módulos presentes.
+  - **P0**: serve + `/v1/models` + `/v1/chat/completions` (streaming and non-streaming) + auth/CORS + `[server]` extra on PyPI.
+  - **P1**: embeddings/audio/vision/tools according to the modules available.
 - **Technical Risks**:
-  - Colisão com Ollama na 11434 — desejável para compat, ruim para “os dois ao mesmo tempo”. Mitigação: mensagem de bind.
-  - Tool calling “OpenAI-compat” é onde os clientes quebram. Mitigação: P1 explícito; não anunciar tools no `/v1/models` até existir.
+  - Collision with Ollama on 11434 — desirable for compatibility, problematic for “both at the same time.” Mitigation: bind error message.
+  - “OpenAI-compatible” tool calling is where clients break. Mitigation: explicit P1; do not advertise tools in `/v1/models` until support exists.
 
-**Contestação:** não atrasar o server até voz/visão/RAG/OpenClaw. Lib + serve é o segundo demo público, não o launcher.
+**Challenge:** Do not delay the server until voice/vision/RAG/OpenClaw. Library + serve is the second public demo, not the launcher.
 
-**Speckit:** feature `openai-server`.
+**Speckit:** `openai-server` feature.

@@ -1,30 +1,30 @@
-# PRD 08 — Empacotamento desktop (retirado)
+# PRD 08 — Desktop Packaging (Withdrawn)
 
-| Campo | Valor |
+| Field | Value |
 |---|---|
 | ID | `PRD-08` |
-| Status | **Retirado** |
-| Motivo | A série entrega o SDK só pelo PyPI. Não há instalador, binário nem template desktop. |
+| Status | **Withdrawn** |
+| Reason | The series distributes the SDK only through PyPI. There is no installer, binary, or desktop template. |
 
 ---
 
-### Decisão
+### Decision
 
-Distribuição desta série: **só PyPI**. Primeiro índice público no [PRD 02](02-llm.md) (`ceia-aisdk==0.1.0`). Extras `[cuda]`, `[server]`, `[apps]` entram nas versões que os entregam. Modelos continuam on-demand no cache `~/.ceia-aisdk/`, via registry (PRD 01) — nunca no wheel.
+Distribution for this series: **PyPI only**. The first publication to the public index is defined in [PRD 02](02-llm.md) (`ceia-aisdk==0.1.0`). The `[cuda]`, `[server]`, and `[apps]` extras are included in the versions that deliver them. Models remain on-demand in the `~/.ceia-aisdk/` cache through the registry (PRD 01)—never in the wheel.
 
-O plano original (etapa 9: PyInstaller, Briefcase, `bundle create`) assumia a persona “app desktop end-user”. Isso não é o produto que estamos lançando. Manter um PRD de packaging só para gerar manifesto/binário cria trabalho que ninguém vai usar.
+The original plan (stage 9: PyInstaller, Briefcase, `bundle create`) assumed an “end-user desktop app” persona. That is not the product we are launching. Maintaining a packaging PRD solely to generate a manifest/binary creates work that no one will use.
 
-### O que não entra
+### What Is Not Included
 
-- PyInstaller, Briefcase, AppImage, `.exe`, instaladores.
+- PyInstaller, Briefcase, AppImage, `.exe`, installers.
 - `ceia-aisdk bundle create`.
-- Guia de “como embutir o SDK num binário”.
+- A “how to embed the SDK in a binary” guide.
 
-### O que sobra, e onde mora
+### What Remains and Where It Lives
 
-- **`ceia-aisdk model pull --essentials`**: atalho de cache offline (CI, demo, air-gap). Não é canal de distribuição. Vai para o [PRD 01](01-model-registry.md) como P1, filtrando aliases que já existirem.
-- **App launcher (PRD 07)**: instala frontends OSS (Docker/npm) apontando ao `serve`. Não publica o SDK; o usuário ainda instala o SDK via pip.
+- **`ceia-aisdk model pull --essentials`**: offline cache shortcut (CI, demo, air-gapped environments). It is not a distribution channel. It belongs in [PRD 01](01-model-registry.md) as P1, filtering aliases that already exist.
+- **App launcher (PRD 07)**: installs OSS frontends (Docker/npm) pointing to `serve`. It does not publish the SDK; the user still installs the SDK via pip.
 
-### Quando reabrir
+### When to Reopen
 
-Só com um PRD novo, se um cliente real precisar de binário Linux. Não reabrir este arquivo.
+Only through a new PRD, if an actual customer needs a Linux binary. Do not reopen this file.
