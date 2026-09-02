@@ -3,6 +3,10 @@
 **Feature**: `003-llm-module`
 **Priority**: P1 — MUST NOT block first-chat or the `0.1.0` upload
 
+**Superseded in part by** [004-openai-server/contracts/tools.md](../../004-openai-server/contracts/tools.md):
+`0.2.0` adds `LLM.complete` / `CompletionResult` / OpenAI `tool_calls` on `/v1/chat/completions`.
+This 003 file remains the `ToolDeclaration` and capability-gate contract for `0.1.0`.
+
 This contract exists so PRD-06 can expose the same convention. Implementation MAY ship in
 `0.1.0` or the first patch.
 
