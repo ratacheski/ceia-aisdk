@@ -21,6 +21,7 @@ env/
 # Runtime model weights (never commit artifacts)
 *.gguf
 *.onnx
+tests/fixtures/
 
 # Tests and coverage
 .pytest_cache/

@@ -120,6 +120,7 @@ def test_twine_and_wheel_contents(artifacts: tuple[Path, Path]) -> None:
     assert contents.returncode == 0, contents.stdout + contents.stderr
 
 
+@pytest.mark.enable_socket
 def test_isolated_wheel_and_sdist_smoke(artifacts: tuple[Path, Path]) -> None:
     wheel, sdist = artifacts
     for artifact in (wheel, sdist):
@@ -129,7 +130,6 @@ def test_isolated_wheel_and_sdist_smoke(artifacts: tuple[Path, Path]) -> None:
                 "run",
                 "--isolated",
                 "--no-project",
-                "--offline",
                 "--with",
                 str(artifact),
                 "python",
@@ -149,7 +149,6 @@ def test_isolated_wheel_and_sdist_smoke(artifacts: tuple[Path, Path]) -> None:
             "run",
             "--isolated",
             "--no-project",
-            "--offline",
             "--with",
             str(wheel),
             "ceia-aisdk",
@@ -169,7 +168,6 @@ def test_isolated_wheel_and_sdist_smoke(artifacts: tuple[Path, Path]) -> None:
             "run",
             "--isolated",
             "--no-project",
-            "--offline",
             "--with",
             str(wheel),
             "ceia-aisdk",
@@ -183,6 +181,31 @@ def test_isolated_wheel_and_sdist_smoke(artifacts: tuple[Path, Path]) -> None:
     )
     assert model_help.returncode == 0, model_help.stderr
     assert "pull" in model_help.stdout
+
+
+@pytest.mark.enable_socket
+def test_isolated_llm_import_does_not_load_llama_cpp(artifacts: tuple[Path, Path]) -> None:
+    wheel, _sdist = artifacts
+    result = subprocess.run(
+        [
+            "uv",
+            "run",
+            "--isolated",
+            "--no-project",
+            "--with",
+            str(wheel),
+            "python",
+            "-c",
+            "from ceia_aisdk.llm import LLM; import sys; "
+            "assert 'llama_cpp' not in sys.modules; print(LLM)",
+        ],
+        cwd=REPO_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "LLM" in result.stdout
 
 
 def test_no_publication_command_is_invoked(artifacts: tuple[Path, Path]) -> None:

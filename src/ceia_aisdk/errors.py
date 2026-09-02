@@ -83,3 +83,32 @@ class DownloadError(AISDKError):
                 include catalog origin URLs.
         """
         super().__init__(message, remediation=remediation)
+
+
+class GenerationError(AISDKError):
+    """Raised when local generation or model load fails."""
+
+    def __init__(self, message: str, *, remediation: str) -> None:
+        """Initialize a generation or load error.
+
+        Args:
+            message: Nonempty user-facing English explanation. Must not include
+                catalog origin URLs, prompt text, or completion bodies.
+            remediation: Nonempty user-facing English next action, such as
+                shortening session history or raising context_length.
+        """
+        super().__init__(message, remediation=remediation)
+
+
+class CapabilityError(AISDKError):
+    """Raised when a requested capability is not supported by the alias."""
+
+    def __init__(self, message: str, *, remediation: str) -> None:
+        """Initialize a missing-capability error.
+
+        Args:
+            message: Nonempty user-facing English explanation.
+            remediation: Nonempty user-facing English next action, such as
+                choosing an alias whose capabilities include tool_use.
+        """
+        super().__init__(message, remediation=remediation)

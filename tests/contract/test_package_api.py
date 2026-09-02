@@ -61,11 +61,15 @@ def test_public_error_exports() -> None:
     assert ceia_aisdk.DeviceError is not None
     assert ceia_aisdk.ModelNotFoundError is not None
     assert ceia_aisdk.DownloadError is not None
+    assert ceia_aisdk.GenerationError is not None
+    assert ceia_aisdk.CapabilityError is not None
     from ceia_aisdk import (
         AISDKError,
+        CapabilityError,
         ConfigError,
         DeviceError,
         DownloadError,
+        GenerationError,
         ModelNotFoundError,
     )
 
@@ -73,6 +77,8 @@ def test_public_error_exports() -> None:
     assert issubclass(DeviceError, AISDKError)
     assert issubclass(ModelNotFoundError, AISDKError)
     assert issubclass(DownloadError, AISDKError)
+    assert issubclass(GenerationError, AISDKError)
+    assert issubclass(CapabilityError, AISDKError)
 
 
 def test_python_requires_range() -> None:
@@ -87,7 +93,7 @@ def test_linux_classifier_without_windows_support() -> None:
     assert not any("MacOS" in item for item in classifiers)
 
 
-def test_cuda_extra_is_reserved_and_empty() -> None:
+def test_cuda_extra_is_declared() -> None:
     dist = importlib.metadata.distribution("ceia-aisdk")
     extras = dist.metadata.get_all("Provides-Extra") or []
     assert "cuda" in extras
@@ -97,7 +103,8 @@ def test_cuda_extra_is_reserved_and_empty() -> None:
     cuda_reqs = [
         item for item in requires if 'extra == "cuda"' in item or "extra == 'cuda'" in item
     ]
-    assert cuda_reqs == []
+    assert cuda_reqs
+    assert any("llama-cpp-python" in item for item in cuda_reqs)
 
 
 def test_package_root_is_lightweight() -> None:
@@ -107,6 +114,7 @@ def test_package_root_is_lightweight() -> None:
     assert "cli" not in imported
     assert "_diagnostics" not in imported
     assert "registry" not in imported
+    assert "llm" not in imported
 
 
 def test_fresh_import_does_not_load_cli_or_backends() -> None:
@@ -120,6 +128,7 @@ forbidden = (
     "yaml",
     "ceia_aisdk.cli",
     "ceia_aisdk.registry",
+    "ceia_aisdk.llm",
     "ceia_aisdk._diagnostics",
     "torch",
     "llama_cpp",
@@ -200,6 +209,7 @@ assert "httpx" not in sys.modules
 assert "yaml" not in sys.modules
 assert "ceia_aisdk.cli" not in sys.modules
 assert "ceia_aisdk.registry" not in sys.modules
+assert "ceia_aisdk.llm" not in sys.modules
 """
     result = subprocess.run(
         [sys.executable, "-c", code], check=False, capture_output=True, text=True

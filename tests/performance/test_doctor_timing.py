@@ -15,6 +15,8 @@ import pytest
 
 from ceia_aisdk.hardware import NVIDIA_SMI_TIMEOUT_SECONDS
 
+pytestmark = pytest.mark.allow_llama_cpp
+
 _DOCTOR_LIMIT_SECONDS = 5.0
 
 
@@ -79,13 +81,13 @@ def test_doctor_makes_zero_network_attempts(
     assert result.exit_code == 0, result.output
 
 
-def test_doctor_does_not_import_inference_backends(isolated_home: Path) -> None:
+def test_doctor_does_not_import_non_llm_inference_backends(isolated_home: Path) -> None:
     code = """
 import sys
 from typer.testing import CliRunner
 from ceia_aisdk.cli import app
 result = CliRunner().invoke(app, ["doctor"])
-forbidden = ["torch", "llama_cpp", "faster_whisper", "piper"]
+forbidden = ["torch", "faster_whisper", "piper"]
 loaded = [name for name in forbidden if name in sys.modules]
 raise SystemExit(0 if result.exit_code in {0, 1} and not loaded else 1)
 """

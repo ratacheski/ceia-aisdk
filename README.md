@@ -1,20 +1,103 @@
 # CEIA AI SDK
 
-Linux x86_64 foundation for the CEIA AI SDK. This repository is the local
-install source until the public `0.1.0` release in PRD-02. Do not expect a
-package named `ceia-aisdk` on public PyPI from this feature.
+Local GGUF chat for Linux x86_64. Install from PyPI, construct `LLM()`, and
+get a completion from `llm/small` in about 15 minutes on CPU, including the
+model download. CUDA compilation is outside that 15-minute path.
 
-The base extra `[cuda]` is reserved and empty. It does not install a CUDA
-runtime or any inference backend.
+This package supports **Linux x86_64** only. It does not promise Windows
+support.
 
-## Scope
+Model weights are downloaded into `~/.ceia-aisdk` at runtime. They are **not**
+inside the wheel or source distribution. `LLM` instances are **not thread-safe**.
 
-- Supported platform: Linux x86_64
-- Supported Python: 3.11, 3.12, and 3.13
-- Distribution name: `ceia-aisdk`
-- Import name: `ceia_aisdk`
-- Console script: `ceia-aisdk`
-- Public publication: not in this feature (PRD-02)
+## 15-minute CPU quickstart
+
+```bash
+pip install ceia-aisdk
+python -c 'from ceia_aisdk.llm import LLM; print(LLM().chat("Say only: ok"))'
+```
+
+The first call uses the launch default `llm/small@latest`, obtains the local
+file through the registry, and returns a nonempty string. On a TTY, obtain
+progress is shown. Later calls reuse the cache.
+
+Select medium or force CPU:
+
+```python
+from ceia_aisdk.llm import LLM
+
+LLM("medium").chat("Say only: ok")
+LLM(device="cpu").chat("Say only: ok")
+```
+
+Streaming and a short session:
+
+```python
+from ceia_aisdk.llm import LLM
+
+model = LLM(device="cpu")
+print("".join(model.stream("Say only: ok")))
+session = model.session(system="Be brief.")
+session.send("My name is Ada.")
+print(session.send("What is my name?"))
+```
+
+Async callers use `AsyncLLM`. Generation runs in a worker thread because the
+llama.cpp binding is blocking:
+
+```python
+import asyncio
+from ceia_aisdk.llm import AsyncLLM
+
+async def main() -> None:
+    model = AsyncLLM(device="cpu")
+    print(await model.chat("Say only: ok"))
+
+asyncio.run(main())
+```
+
+## CUDA extra
+
+GPU onboarding uses the `[cuda]` extra. Public PyPI does not host a CUDA build
+of `llama-cpp-python`, so install the extra and then rebuild or install a
+CUDA-capable binding. Compile time is **not** part of the 15-minute CPU path.
+
+```bash
+pip install "ceia-aisdk[cuda]"
+CMAKE_ARGS="-DGGML_CUDA=on" pip install --force-reinstall --no-cache-dir llama-cpp-python
+```
+
+If the project publishes a prebuilt extra index, install from that index
+instead of compiling. `ceia-aisdk doctor` reports GPU visibility and, separately,
+whether the CUDA inference binding is present (`cuda_binding=yes|no`).
+
+## CLI
+
+```bash
+ceia-aisdk --help
+ceia-aisdk doctor
+ceia-aisdk model --help
+```
+
+## Configuration
+
+`AISDKConfig` keeps four fields: `device`, `cache_dir`, `log_level`, `offline`.
+LLM defaults live in a sibling `[llm]` table:
+
+```toml
+[core]
+device = "auto"
+cache_dir = "~/.ceia-aisdk"
+log_level = "WARNING"
+offline = false
+
+[llm]
+default_alias = "llm/small@latest"
+context_length = 8192
+```
+
+Environment overrides: `CEIA_AISDK_DEVICE`, `CEIA_AISDK_LLM_DEFAULT_ALIAS`,
+`CEIA_AISDK_LLM_CONTEXT_LENGTH`, `CEIA_AISDK_OFFLINE`.
 
 ## Contributor setup
 
@@ -26,177 +109,16 @@ uv sync --python 3.13 --locked --all-groups --all-extras
 uv lock --check
 ```
 
-All contributor commands in this repository run through `uv`.
-
-## Local installation
-
-Editable install from a clone:
+All contributor commands in this repository run through `uv`. End-user install
+examples use `pip`.
 
 ```bash
-uv sync --locked --all-groups --all-extras
-uv run python -c "import ceia_aisdk; print(ceia_aisdk.__version__)"
-uv run ceia-aisdk --help
-```
-
-Build and install a local wheel without publishing:
-
-```bash
+uv run pytest
 uv build --no-sources
-uv run --isolated --no-project --with dist/*.whl ceia-aisdk --help
 ```
 
-Do not run `uv publish`. Public PyPI upload is reserved for PRD-02.
-
-## CLI discovery
+Fetch the tiny GGUF used by real-backend tests:
 
 ```bash
-uv run ceia-aisdk --help
-uv run ceia-aisdk doctor --help
-uv run ceia-aisdk doctor
-CEIA_AISDK_DEVICE=cpu uv run ceia-aisdk doctor
+./scripts/fetch-llm-test-fixture.sh
 ```
-
-`ceia-aisdk doctor` inspects the local foundation. It does not download
-models, create caches, or send telemetry.
-
-## Configuration
-
-`AISDKConfig` is an immutable snapshot. Each field is resolved independently
-in this order: explicit arguments, `CEIA_AISDK_*` environment variables,
-`~/.ceia-aisdk/config.toml`, then defaults.
-
-Defaults:
-
-- `device`: `auto`
-- `cache_dir`: expanded `~/.ceia-aisdk` (the directory is not created)
-- `log_level`: `WARNING` (case-sensitive; not trimmed)
-- `offline`: `false` (`CEIA_AISDK_OFFLINE` accepts only `0` or `1`)
-
-Example TOML:
-
-```toml
-[core]
-device = "auto"
-cache_dir = "~/.ceia-aisdk"
-log_level = "WARNING"
-offline = false
-```
-
-Environment override:
-
-```bash
-CEIA_AISDK_DEVICE=cpu \
-CEIA_AISDK_CACHE_DIR=/tmp/ceia-cache \
-CEIA_AISDK_LOG_LEVEL=INFO \
-CEIA_AISDK_OFFLINE=1 \
-uv run python -c "from ceia_aisdk import AISDKConfig; print(AISDKConfig.load())"
-```
-
-Explicit arguments win over the environment:
-
-```python
-from ceia_aisdk import AISDKConfig
-
-config = AISDKConfig.load(device="cpu")
-```
-
-Mixed sources are valid: one field may come from an argument, another from
-the environment, another from TOML, and another from a default. Invalid
-lower-priority values are ignored when a valid higher-priority value exists.
-A missing or empty TOML file is not an error. Malformed files and invalid
-winning values raise `ConfigError` without echoing file contents.
-
-## Hardware selection
-
-`get_device()` returns `cpu` or `cuda:N`. Memory values are MiB. Automatic
-selection uses the lowest usable NVIDIA index. Compute-prohibited GPUs and
-enabled MIG devices are reported by `detect_gpus()` but are not selected.
-This is not a guarantee that a future inference backend was built with CUDA.
-
-```python
-from ceia_aisdk import detect_gpus, get_device
-
-get_device("cpu")  # never probes NVIDIA
-get_device("auto")  # cuda:N or cpu
-get_device("cuda")  # lowest usable index, or DeviceError
-get_device("cuda:0")  # that index, or DeviceError
-detect_gpus()  # ((index, name, total MiB, free MiB), ...)
-```
-
-## Troubleshooting
-
-Invalid configuration raises `ConfigError` with a next action. The message
-names the field and source when that is safe, and never prints the TOML file
-or secret values:
-
-```bash
-CEIA_AISDK_DEVICE=nope uv run python -c "from ceia_aisdk import AISDKConfig; AISDKConfig.load()"
-```
-
-Forced CUDA without a usable GPU raises `DeviceError`. Use CPU or fix the
-local driver/`nvidia-smi`/index:
-
-```python
-from ceia_aisdk import get_device
-
-try:
-    get_device("cuda")
-except Exception as exc:  # DeviceError
-    print(exc.remediation)
-```
-
-```bash
-CEIA_AISDK_DEVICE=cuda uv run ceia-aisdk doctor
-```
-
-Automatic selection with no GPU is not an error: `get_device("auto")` returns
-`cpu`.
-
-## Model registry
-
-The registry maps opaque aliases such as `llm/small`, `llm/small@1`, and
-`llm/small@latest` to a single checksummed artifact. Programmatic callers must
-use a domain-qualified alias or pass `domain=`. The CLI treats unqualified
-`small` as `llm/small`.
-
-```python
-from ceia_aisdk.registry import ensure_local, get_public_metadata, resolve
-
-resolve("llm/small")
-get_public_metadata("llm/small")
-path = ensure_local("llm/small")  # downloads once, then reuses the cache
-```
-
-```bash
-uv run ceia-aisdk model --help
-uv run ceia-aisdk model pull llm/small
-uv run ceia-aisdk model pull --essentials
-uv run ceia-aisdk model info llm/small
-uv run ceia-aisdk model where llm/small
-uv run ceia-aisdk model list
-uv run ceia-aisdk model verify
-uv run ceia-aisdk model rm llm/small
-```
-
-Artifacts are stored under the configured `cache_dir` as
-`models/<domain>/<size>-v<N>.bin`. Cache names, `model info`, and public
-exceptions do not include the origin URL, upstream repository, or upstream
-filename. Weights are never packaged in the wheel.
-
-`CEIA_AISDK_OFFLINE=1` reuses a valid cache and refuses uncached downloads
-without opening a socket. `CEIA_AISDK_CATALOG` replaces the bundled catalog
-with a local YAML file or an HTTP URL. There is no merge, no signature check,
-and no fallback to the public host. Catalog authenticity is not verified;
-integrity is the artifact SHA-256 checksum. Treat a remote catalog override as
-an unsigned trust decision.
-
-Documented bypasses skip the catalog: an existing filesystem path, or
-`hf://<repo>/<file>`. Bypasses are stored under `models/custom/` with sidecar
-`source=bypass` and do not rewrite catalog opaque names.
-
-```bash
-CEIA_AISDK_CATALOG=/path/to/catalog.yaml uv run ceia-aisdk model pull llm/small
-CEIA_AISDK_OFFLINE=1 uv run ceia-aisdk model where llm/small
-```
-
-

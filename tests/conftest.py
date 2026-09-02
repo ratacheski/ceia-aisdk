@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import http.server
+import json
 import os
+import shutil
 import sys
 import threading
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -24,6 +26,10 @@ FORBIDDEN_BACKENDS = (
 _ENV_PREFIX = "CEIA_AISDK_"
 _FIXTURE_SIZE_BYTES = 16 * 1024 * 1024
 enable_socket = pytest.mark.enable_socket
+LLM_FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
+LLM_FIXTURE_PATH = LLM_FIXTURE_DIR / "stories15M-q4_0.gguf"
+LLM_FIXTURE_SHA256 = "6151b1929d7f5aa3385d9ddef3393e55587c0a55de661562322bc51dfda93a04"
+LLM_FIXTURE_SIZE_BYTES = 19077344
 
 
 @dataclass
@@ -65,6 +71,14 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "markers",
         "enable_socket: allow network sockets for loopback HTTP fixture tests",
+    )
+    config.addinivalue_line(
+        "markers",
+        "allow_llama_cpp: allow importing llama_cpp for real-backend LLM tests",
+    )
+    config.addinivalue_line(
+        "markers",
+        "requires_llm_fixture: skip when the pinned tiny GGUF fixture is missing",
     )
 
 
@@ -133,16 +147,27 @@ def socket_blocking() -> None:
 
 
 @pytest.fixture(autouse=True)
-def assert_no_backend_imports() -> Iterator[None]:
+def assert_no_backend_imports(request: pytest.FixtureRequest) -> Iterator[None]:
     """Fail if a test loads a forbidden inference backend.
+
+    Tests marked ``allow_llama_cpp`` may import ``llama_cpp``. Other forbidden
+    backends remain blocked.
+
+    Args:
+        request: Current pytest test request.
 
     Yields:
         Control to the test body, then asserts that no forbidden module
         was imported.
     """
-    before = {name for name in sys.modules if _is_forbidden_backend(name)}
+    allow_llama_cpp = request.node.get_closest_marker("allow_llama_cpp") is not None
+    before = {
+        name for name in sys.modules if _is_forbidden_backend(name, allow_llama_cpp=allow_llama_cpp)
+    }
     yield
-    after = {name for name in sys.modules if _is_forbidden_backend(name)}
+    after = {
+        name for name in sys.modules if _is_forbidden_backend(name, allow_llama_cpp=allow_llama_cpp)
+    }
     newly_loaded = sorted(after - before)
     assert not newly_loaded, f"Forbidden inference backends were imported: {newly_loaded}"
 
@@ -356,16 +381,362 @@ def _parse_byte_range(header: str, size: int) -> tuple[int, int]:
     return start, end
 
 
-def _is_forbidden_backend(module_name: str) -> bool:
+def _is_forbidden_backend(module_name: str, *, allow_llama_cpp: bool = False) -> bool:
     """Return whether a module name is a forbidden inference backend.
 
     Args:
         module_name: Fully qualified module name from ``sys.modules``.
+        allow_llama_cpp: When true, ``llama_cpp`` is not treated as forbidden.
 
     Returns:
         True when the name is a forbidden backend or a submodule of one.
     """
+    backends = FORBIDDEN_BACKENDS
+    if allow_llama_cpp:
+        backends = tuple(name for name in backends if name != "llama_cpp")
     return any(
-        module_name == backend or module_name.startswith(f"{backend}.")
-        for backend in FORBIDDEN_BACKENDS
+        module_name == backend or module_name.startswith(f"{backend}.") for backend in backends
     )
+
+
+def skip_if_missing_llm_fixture() -> Path:
+    """Return the tiny GGUF path, or skip the calling test when it is absent.
+
+    Returns:
+        Absolute path of the pinned stories15M Q4_0 fixture.
+    """
+    if not LLM_FIXTURE_PATH.is_file():
+        pytest.skip("tiny GGUF fixture is missing; run scripts/fetch-llm-test-fixture.sh")
+    return LLM_FIXTURE_PATH
+
+
+@pytest.fixture
+def llm_gguf_path() -> Path:
+    """Return the pinned tiny GGUF, skipping when the fetch script has not run.
+
+    Returns:
+        Absolute path of the fixture file.
+    """
+    return skip_if_missing_llm_fixture()
+
+
+@dataclass
+class FakeBackend:
+    """Recording inference backend used by unit tests instead of llama.cpp."""
+
+    text: str = "ok"
+    chunks: tuple[str, ...] = ("ok",)
+    raise_oom: bool = False
+    raise_overflow: bool = False
+    calls: list[dict[str, Any]] = field(default_factory=list)
+    n_gpu_layers: int = 0
+    n_ctx: int = 8192
+    path: Path | None = None
+
+    def generate(
+        self,
+        messages: Sequence[dict[str, str]],
+        *,
+        max_tokens: int,
+        temperature: float,
+        seed: int | None,
+    ) -> str:
+        """Return canned text or raise a backend failure.
+
+        Args:
+            messages: Chat messages passed by the LLM wrapper.
+            max_tokens: Maximum tokens requested.
+            temperature: Sampling temperature.
+            seed: Optional generation seed.
+
+        Returns:
+            The canned completion text.
+
+        Raises:
+            RuntimeError: When OOM or context overflow is requested.
+        """
+        self.calls.append(
+            {
+                "kind": "generate",
+                "messages": list(messages),
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "seed": seed,
+            }
+        )
+        if self.raise_oom:
+            raise RuntimeError("CUDA out of memory")
+        if self.raise_overflow:
+            raise RuntimeError("context overflow: prompt is longer than n_ctx")
+        return self.text
+
+    def stream(
+        self,
+        messages: Sequence[dict[str, str]],
+        *,
+        max_tokens: int,
+        temperature: float,
+        seed: int | None,
+    ) -> Iterator[str]:
+        """Yield canned chunks or raise a backend failure.
+
+        Args:
+            messages: Chat messages passed by the LLM wrapper.
+            max_tokens: Maximum tokens requested.
+            temperature: Sampling temperature.
+            seed: Optional generation seed.
+
+        Yields:
+            Canned completion chunks.
+
+        Raises:
+            RuntimeError: When OOM or context overflow is requested.
+        """
+        self.calls.append(
+            {
+                "kind": "stream",
+                "messages": list(messages),
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "seed": seed,
+            }
+        )
+        if self.raise_oom:
+            raise RuntimeError("CUDA out of memory")
+        if self.raise_overflow:
+            raise RuntimeError("context overflow: prompt is longer than n_ctx")
+        yield from self.chunks
+
+
+@pytest.fixture
+def fake_backend(monkeypatch: pytest.MonkeyPatch) -> FakeBackend:
+    """Install a fake inference backend in place of llama.cpp.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        The installed fake backend instance.
+    """
+    backend = FakeBackend()
+
+    def _create(
+        path: Path,
+        *,
+        n_ctx: int,
+        n_gpu_layers: int,
+    ) -> FakeBackend:
+        backend.path = path
+        backend.n_ctx = n_ctx
+        backend.n_gpu_layers = n_gpu_layers
+        return backend
+
+    monkeypatch.setattr("ceia_aisdk.llm.backend.create_backend", _create)
+    monkeypatch.setattr("ceia_aisdk.llm.model.create_backend", _create)
+    return backend
+
+
+def seed_cataloged_cache(
+    cache_dir: Path,
+    source: Path,
+    *,
+    domain: str = "llm",
+    size: str = "small",
+    version: int = 1,
+    alias: str = "llm/small@1",
+    sha256: str = LLM_FIXTURE_SHA256,
+    size_bytes: int = LLM_FIXTURE_SIZE_BYTES,
+) -> Path:
+    """Copy a fixture into the opaque cataloged cache layout.
+
+    Args:
+        cache_dir: Isolated SDK cache directory.
+        source: Local fixture file to copy.
+        domain: Catalog domain token.
+        size: Catalog size token.
+        version: Catalog version.
+        alias: Canonical alias stored in the sidecar.
+        sha256: Checksum recorded in the sidecar.
+        size_bytes: Declared payload size.
+
+    Returns:
+        Destination cache path.
+    """
+    destination = cache_dir / "models" / domain / f"{size}-v{version}.bin"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source, destination)
+    sidecar = destination.with_name(f"{size}-v{version}.meta.json")
+    sidecar.write_text(
+        json.dumps(
+            {
+                "alias": alias,
+                "source": "catalog",
+                "sha256": sha256,
+                "size_bytes": size_bytes,
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return destination
+
+
+@pytest.fixture
+def llm_fixture_catalog(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    isolated_cache_dir: Path,
+    llm_gguf_path: Path,
+) -> Path:
+    """Install a loopback-free catalog and seed cache with the tiny GGUF.
+
+    Args:
+        tmp_path: Pytest temporary directory.
+        monkeypatch: Pytest monkeypatch fixture.
+        isolated_cache_dir: Isolated cache directory.
+        llm_gguf_path: Pinned tiny GGUF path.
+
+    Returns:
+        The isolated cache directory. ``CEIA_AISDK_CATALOG`` is set.
+    """
+    catalog_path = tmp_path / "llm-fixture-catalog.yaml"
+    write_catalog_yaml(
+        catalog_path,
+        url="https://example.invalid/stories15M-q4_0.gguf",
+        sha256=LLM_FIXTURE_SHA256,
+        size_bytes=LLM_FIXTURE_SIZE_BYTES,
+        extra_models={
+            "llm": {
+                "small": {
+                    "latest": 1,
+                    "versions": {
+                        1: {
+                            "url": "https://example.invalid/stories15M-q4_0.gguf",
+                            "sha256": LLM_FIXTURE_SHA256,
+                            "size_bytes": LLM_FIXTURE_SIZE_BYTES,
+                            "public": {
+                                "license_family": "apache-2.0",
+                                "commercial_use": True,
+                                "context_length": 2048,
+                                "size_gb": 0.02,
+                                "capabilities": ["chat"],
+                                "quantization_class": "compact",
+                            },
+                        }
+                    },
+                },
+                "medium": {
+                    "latest": 1,
+                    "versions": {
+                        1: {
+                            "url": "https://example.invalid/stories15M-medium.gguf",
+                            "sha256": LLM_FIXTURE_SHA256,
+                            "size_bytes": LLM_FIXTURE_SIZE_BYTES,
+                            "public": {
+                                "license_family": "apache-2.0",
+                                "commercial_use": True,
+                                "context_length": 2048,
+                                "size_gb": 0.02,
+                                "capabilities": ["chat", "tool_use"],
+                                "quantization_class": "compact",
+                            },
+                        }
+                    },
+                },
+            }
+        },
+    )
+    monkeypatch.setenv("CEIA_AISDK_CATALOG", str(catalog_path))
+    seed_cataloged_cache(isolated_cache_dir, llm_gguf_path)
+    seed_cataloged_cache(
+        isolated_cache_dir,
+        llm_gguf_path,
+        size="medium",
+        alias="llm/medium@1",
+    )
+    return isolated_cache_dir
+
+
+@pytest.fixture
+def fake_llm_catalog(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    isolated_cache_dir: Path,
+) -> Path:
+    """Install a local catalog and a tiny dummy cache file for fake-backend tests.
+
+    Args:
+        tmp_path: Pytest temporary directory.
+        monkeypatch: Pytest monkeypatch fixture.
+        isolated_cache_dir: Isolated cache directory.
+
+    Returns:
+        The isolated cache directory.
+    """
+    dummy = tmp_path / "dummy.bin"
+    dummy.write_bytes(b"not-a-gguf")
+    digest = hashlib.sha256(dummy.read_bytes()).hexdigest()
+    catalog_path = tmp_path / "fake-llm-catalog.yaml"
+    write_catalog_yaml(
+        catalog_path,
+        url="https://example.invalid/dummy.bin",
+        sha256=digest,
+        size_bytes=dummy.stat().st_size,
+        extra_models={
+            "llm": {
+                "small": {
+                    "latest": 1,
+                    "versions": {
+                        1: {
+                            "url": "https://example.invalid/dummy.bin",
+                            "sha256": digest,
+                            "size_bytes": dummy.stat().st_size,
+                            "public": {
+                                "license_family": "apache-2.0",
+                                "commercial_use": True,
+                                "context_length": 8192,
+                                "size_gb": 2.33,
+                                "capabilities": ["chat"],
+                                "quantization_class": "compact",
+                            },
+                        }
+                    },
+                },
+                "medium": {
+                    "latest": 1,
+                    "versions": {
+                        1: {
+                            "url": "https://example.invalid/dummy-medium.bin",
+                            "sha256": digest,
+                            "size_bytes": dummy.stat().st_size,
+                            "public": {
+                                "license_family": "apache-2.0",
+                                "commercial_use": True,
+                                "context_length": 8192,
+                                "size_gb": 99.0,
+                                "capabilities": ["chat", "tool_use"],
+                                "quantization_class": "standard",
+                            },
+                        }
+                    },
+                },
+            }
+        },
+    )
+    monkeypatch.setenv("CEIA_AISDK_CATALOG", str(catalog_path))
+    seed_cataloged_cache(
+        isolated_cache_dir,
+        dummy,
+        sha256=digest,
+        size_bytes=dummy.stat().st_size,
+    )
+    seed_cataloged_cache(
+        isolated_cache_dir,
+        dummy,
+        size="medium",
+        alias="llm/medium@1",
+        sha256=digest,
+        size_bytes=dummy.stat().st_size,
+    )
+    return isolated_cache_dir

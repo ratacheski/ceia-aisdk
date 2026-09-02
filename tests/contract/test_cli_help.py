@@ -69,6 +69,8 @@ def test_doctor_help_covers_scope_and_examples(cli_available: str) -> None:
     assert "download" in text.lower()
     assert "Linux x86_64" in text
     assert "CUDA" in text or "cuda" in text
+    assert "binding" in text.lower()
+    assert "visible" in text.lower() or "GPU" in text or "gpu" in text
     assert "ceia-aisdk doctor" in text
     assert "CEIA_AISDK_DEVICE=cpu" in text
     assert "Examples" in text

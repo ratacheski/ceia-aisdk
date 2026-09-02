@@ -10,9 +10,11 @@ import pytest
 
 from ceia_aisdk.errors import (
     AISDKError,
+    CapabilityError,
     ConfigError,
     DeviceError,
     DownloadError,
+    GenerationError,
     ModelNotFoundError,
 )
 
@@ -25,6 +27,11 @@ def test_public_error_hierarchy() -> None:
     assert issubclass(DeviceError, AISDKError)
     assert issubclass(ModelNotFoundError, AISDKError)
     assert issubclass(DownloadError, AISDKError)
+    assert issubclass(GenerationError, AISDKError)
+    assert issubclass(CapabilityError, AISDKError)
+    assert GenerationError is not DeviceError
+    assert GenerationError is not DownloadError
+    assert CapabilityError is not GenerationError
     assert ConfigError is not DeviceError
     assert ModelNotFoundError is not DownloadError
     assert ModelNotFoundError is not ConfigError
@@ -51,20 +58,37 @@ def test_subclasses_preserve_remediation() -> None:
     device_error = DeviceError("cuda is unavailable", remediation="use device=cpu")
     missing = ModelNotFoundError("unknown alias llm/tiny", remediation="use llm/small")
     download = DownloadError("transfer failed", remediation="retry model pull")
+    generation = GenerationError("context overflow", remediation="shorten history")
+    capability = CapabilityError("tools unsupported", remediation="use llm/medium")
     assert isinstance(config_error, AISDKError)
     assert isinstance(device_error, AISDKError)
     assert isinstance(missing, AISDKError)
     assert isinstance(download, AISDKError)
+    assert isinstance(generation, AISDKError)
+    assert isinstance(capability, AISDKError)
     assert config_error.remediation == "use WARNING"
     assert device_error.remediation == "use device=cpu"
     assert missing.remediation == "use llm/small"
     assert download.remediation == "retry model pull"
+    assert generation.remediation == "shorten history"
+    assert capability.remediation == "use llm/medium"
     assert missing.remediation.strip()
     assert download.remediation.strip()
+    assert generation.remediation.strip()
+    assert capability.remediation.strip()
 
 
 @pytest.mark.parametrize(
-    "cls", [AISDKError, ConfigError, DeviceError, ModelNotFoundError, DownloadError]
+    "cls",
+    [
+        AISDKError,
+        ConfigError,
+        DeviceError,
+        ModelNotFoundError,
+        DownloadError,
+        GenerationError,
+        CapabilityError,
+    ],
 )
 def test_error_classes_have_english_docstrings(cls: type[AISDKError]) -> None:
     docstring = inspect.getdoc(cls)
@@ -78,7 +102,16 @@ def test_error_classes_have_english_docstrings(cls: type[AISDKError]) -> None:
 
 
 @pytest.mark.parametrize(
-    "cls", [AISDKError, ConfigError, DeviceError, ModelNotFoundError, DownloadError]
+    "cls",
+    [
+        AISDKError,
+        ConfigError,
+        DeviceError,
+        ModelNotFoundError,
+        DownloadError,
+        GenerationError,
+        CapabilityError,
+    ],
 )
 @pytest.mark.parametrize(
     ("message", "remediation"),
@@ -121,6 +154,8 @@ def test_registry_errors_are_exported_from_package_root() -> None:
 
     assert ceia_aisdk.ModelNotFoundError is ModelNotFoundError
     assert ceia_aisdk.DownloadError is DownloadError
+    assert ceia_aisdk.GenerationError is GenerationError
+    assert ceia_aisdk.CapabilityError is CapabilityError
 
 
 def test_registry_errors_do_not_embed_origin_urls() -> None:

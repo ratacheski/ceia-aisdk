@@ -1,7 +1,7 @@
 [project]
 name = "ceia-aisdk"
-version = "0.1.0.dev0"
-description = "CEIA AI SDK operational foundation for Linux x86_64: configuration, hardware detection, and diagnostics."
+version = "0.1.0"
+description = "CEIA AI SDK for local GGUF chat on Linux x86_64. Weights are downloaded at runtime and are not included in the wheel."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 keywords = ["ceia", "sdk", "diagnostics", "cuda", "linux"]
@@ -20,13 +20,16 @@ classifiers = [
 ]
 dependencies = [
     "httpx>=0.28.1",
+    "llama-cpp-python>=0.3.35",
     "pyyaml>=6.0.3",
     "rich>=13.9",
     "typer>=0.16",
 ]
 
 [project.optional-dependencies]
-cuda = []
+cuda = [
+    "llama-cpp-python>=0.3.35",
+]
 
 [project.scripts]
 ceia-aisdk = "ceia_aisdk.cli:app"
@@ -105,3 +108,4 @@ ignore-words-list = "aisdk,comando,erro"
 
 [tool.check-wheel-contents]
 toplevel = ["ceia_aisdk"]
+ignore = ["W002"]

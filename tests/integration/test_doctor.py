@@ -10,9 +10,12 @@ import subprocess
 from collections.abc import Mapping
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 from ceia_aisdk.cli import app
+
+pytestmark = pytest.mark.allow_llama_cpp
 
 runner = CliRunner()
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
@@ -55,7 +58,9 @@ def test_cpu_doctor_exit_zero_and_copy_block(isolated_home: Path) -> None:
     assert COPY_END in result.stdout
     assert "configured_device=cpu" in result.stdout
     assert "effective_device=cpu" in result.stdout
-    assert "optional_groups=cuda:reserved" in result.stdout
+    assert "optional_groups=cuda" in result.stdout
+    assert "cuda:reserved" not in result.stdout
+    assert "cuda_binding=" in result.stdout
     assert ANSI_RE.search(result.stdout) is None
 
 

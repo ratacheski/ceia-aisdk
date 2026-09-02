@@ -16,7 +16,7 @@ from ceia_aisdk.hardware import GPUInfo, HardwareSnapshot, ProbeStatus
 
 COPY_BLOCK_BEGIN = "--- CEIA AI SDK doctor: copy this ---"
 COPY_BLOCK_END = "--- end CEIA AI SDK doctor ---"
-_OPTIONAL_GROUPS = ("cuda:reserved",)
+_OPTIONAL_GROUPS = ("cuda",)
 
 
 class CheckStatus(Enum):
@@ -71,7 +71,8 @@ class DiagnosticReport:
         gpus: Detected public GPU records.
         cache_dir: Home-normalized cache path.
         offline: Offline flag, if configuration loaded.
-        optional_groups: Declared extra groups with reservation notes.
+        cuda_binding: Whether the CUDA inference binding is present.
+        optional_groups: Declared extra groups.
         checks: Deterministic readiness checks.
         usable: True when the foundation can be used.
         exit_code: Process exit code implied by ``usable``.
@@ -88,6 +89,7 @@ class DiagnosticReport:
     gpus: tuple[GPUInfo, ...]
     cache_dir: str | None
     offline: bool | None
+    cuda_binding: bool
     optional_groups: tuple[str, ...]
     checks: tuple[DiagnosticCheck, ...]
     usable: bool
@@ -120,6 +122,7 @@ def build_report(
     effective_device: str | None = None,
     selection_error: DeviceError | None = None,
     config_error: ConfigError | None = None,
+    cuda_binding: bool = False,
 ) -> DiagnosticReport:
     """Build a complete diagnostic report from already collected inputs.
 
@@ -129,6 +132,7 @@ def build_report(
         effective_device: Selected device, if any.
         selection_error: Device selection failure, if any.
         config_error: Configuration loading failure, if any.
+        cuda_binding: Whether the CUDA inference binding is present.
 
     Returns:
         An immutable report. Renderers must not change its outcome.
@@ -159,6 +163,7 @@ def build_report(
         gpus=() if snapshot.probe_status is ProbeStatus.FAILED else snapshot.gpus,
         cache_dir=None if config is None else normalize_user_path(config.cache_dir),
         offline=None if config is None else config.offline,
+        cuda_binding=cuda_binding,
         optional_groups=_OPTIONAL_GROUPS,
         checks=checks,
         usable=usable,
@@ -195,7 +200,8 @@ def format_copy_block(report: DiagnosticReport) -> str:
         ("gpus", _gpu_summary(report.gpus)),
         ("cache_dir", report.cache_dir or "unavailable"),
         ("offline", "unavailable" if report.offline is None else _flag(report.offline)),
-        ("optional_groups", "cuda:reserved"),
+        ("cuda_binding", "yes" if report.cuda_binding else "no"),
+        ("optional_groups", ",".join(report.optional_groups) if report.optional_groups else "none"),
         ("checks", f"{passed}/{len(report.checks)}"),
         ("exit_code", str(report.exit_code)),
         ("remediation", remediation),
@@ -228,6 +234,7 @@ def format_plain_report(report: DiagnosticReport) -> str:
         f"gpus: {_gpu_summary(report.gpus)}",
         f"cache_dir: {report.cache_dir or 'unavailable'}",
         f"offline: {'unavailable' if report.offline is None else _flag(report.offline)}",
+        f"cuda_binding: {'yes' if report.cuda_binding else 'no'}",
         f"optional_groups: {', '.join(report.optional_groups)}",
     ]
     for check in report.checks:
@@ -352,7 +359,9 @@ def _build_checks(
             key="optional_groups",
             label="Optional groups",
             status=CheckStatus.INFO,
-            summary="cuda is reserved and does not install a runtime in this feature",
+            summary=(
+                "cuda extra is installable; rebuild llama-cpp-python with GGML_CUDA for GPU offload"
+            ),
         )
     )
     return tuple(checks)
@@ -451,6 +460,7 @@ def _render_rich(report: DiagnosticReport, stdout: object) -> None:
     table.add_row("gpus", _gpu_summary(report.gpus))
     table.add_row("cache_dir", report.cache_dir or "unavailable")
     table.add_row("offline", "unavailable" if report.offline is None else _flag(report.offline))
+    table.add_row("cuda_binding", "yes" if report.cuda_binding else "no")
     table.add_row("optional_groups", ", ".join(report.optional_groups))
     for check in report.checks:
         value = f"{check.status.value} {check.summary}"

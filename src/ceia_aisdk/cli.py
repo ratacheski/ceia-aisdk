@@ -47,8 +47,10 @@ def main() -> None:
 def doctor() -> None:
     """Inspect local machine readiness without downloading or transmitting data.
 
-    The diagnostic supports Linux x86_64. Forcing CUDA through configuration
-    can make the command fail when no usable NVIDIA GPU is available.
+    The diagnostic supports Linux x86_64. It reports whether a GPU is visible
+    and, separately, whether the CUDA inference binding is present. Forcing
+    CUDA through configuration can make the command fail when no usable NVIDIA
+    GPU is available.
 
     Examples:
         ceia-aisdk doctor
@@ -78,11 +80,14 @@ def doctor() -> None:
             effective_device = select_device(config.device, snapshot)
         except DeviceError as exc:
             selection_error = exc
+        from ceia_aisdk.llm.devices import cuda_binding_present
+
         report = build_report(
             config=config,
             snapshot=snapshot,
             effective_device=effective_device,
             selection_error=selection_error,
+            cuda_binding=cuda_binding_present(),
         )
     else:
         snapshot = HardwareSnapshot((), (), ProbeStatus.NOT_RUN, None)

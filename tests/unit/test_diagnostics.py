@@ -67,7 +67,8 @@ def test_cpu_report_is_usable(isolated_home: Path) -> None:
     assert report.exit_code == 0
     assert report.effective_device == "cpu"
     assert report.configured_device == "cpu"
-    assert report.optional_groups == ("cuda:reserved",)
+    assert report.optional_groups == ("cuda",)
+    assert report.cuda_binding is False
     assert report.python_supported is True
     assert report.package_importable is True
     assert all(check.status != CheckStatus.FAIL for check in report.checks)
@@ -121,13 +122,16 @@ def test_copy_block_field_order_and_values(isolated_home: Path) -> None:
         "gpus",
         "cache_dir",
         "offline",
+        "cuda_binding",
         "optional_groups",
         "checks",
         "exit_code",
         "remediation",
     ]
     assert "status=usable" in block
-    assert "optional_groups=cuda:reserved" in block
+    assert "optional_groups=cuda" in block
+    assert "cuda:reserved" not in block
+    assert "cuda_binding=no" in block
     assert "offline=true" in block
     assert "\x1b[" not in block
     assert all("\n" not in line for line in lines)
