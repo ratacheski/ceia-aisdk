@@ -1,8 +1,17 @@
 # CEIA AI SDK
 
-Local GGUF chat for Linux x86_64. Install from PyPI, construct `LLM()`, and
-get a completion from `llm/small` in about 15 minutes on CPU, including the
-model download. CUDA compilation is outside that 15-minute path.
+[![PyPI](https://img.shields.io/pypi/v/ceia-aisdk)](https://pypi.org/project/ceia-aisdk/)
+[![Python](https://img.shields.io/pypi/pyversions/ceia-aisdk)](https://pypi.org/project/ceia-aisdk/)
+[![Status](https://img.shields.io/pypi/status/ceia-aisdk)](https://pypi.org/project/ceia-aisdk/)
+
+[PyPI](https://pypi.org/project/ceia-aisdk/) ·
+[Source](https://github.com/ratacheski/ceia-aisdk) ·
+[Issues](https://github.com/ratacheski/ceia-aisdk/issues)
+
+Local GGUF chat for Linux x86_64. Install from
+[PyPI](https://pypi.org/project/ceia-aisdk/), construct `LLM()`, and get a
+completion from `llm/small` in about 15 minutes on CPU, including the model
+download. CUDA compilation is outside that 15-minute path.
 
 This package supports **Linux x86_64** only. It does not promise Windows
 support.

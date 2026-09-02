@@ -31,6 +31,13 @@ cuda = [
     "llama-cpp-python>=0.3.35",
 ]
 
+[project.urls]
+Homepage = "https://github.com/ratacheski/ceia-aisdk"
+Documentation = "https://github.com/ratacheski/ceia-aisdk#readme"
+Repository = "https://github.com/ratacheski/ceia-aisdk"
+Issues = "https://github.com/ratacheski/ceia-aisdk/issues"
+Changelog = "https://github.com/ratacheski/ceia-aisdk/releases"
+
 [project.scripts]
 ceia-aisdk = "ceia_aisdk.cli:app"
 
