@@ -27,9 +27,9 @@ dependency; P2 stories follow after the diagnostic foundation they reuse.
 
 **Purpose**: Establish the `uv`-managed package, development tools, and shared test environment.
 
-- [ ] T001 Initialize the `uv_build` project, Python 3.11-3.13 metadata, `ceia-aisdk` console script, Typer/Rich runtime dependencies, empty `cuda` extra, development tool group, and tool configuration in `pyproject.toml` and `uv.lock`
-- [ ] T002 [P] Add Python, `uv`, test, build, and diagnostic-output exclusions to `.gitignore`
-- [ ] T003 [P] Create shared isolated-home, environment-cleanup, socket-blocking, and backend-import assertion fixtures in `tests/conftest.py`
+- [X] T001 Initialize the `uv_build` project, Python 3.11-3.13 metadata, `ceia-aisdk` console script, Typer/Rich runtime dependencies, empty `cuda` extra, development tool group, and tool configuration in `pyproject.toml` and `uv.lock`
+- [X] T002 [P] Add Python, `uv`, test, build, and diagnostic-output exclusions to `.gitignore`
+- [X] T003 [P] Create shared isolated-home, environment-cleanup, socket-blocking, and backend-import assertion fixtures in `tests/conftest.py`
 
 **Checkpoint**: `uv lock --check` and `uv sync --locked --all-groups --all-extras` succeed.
 
@@ -44,13 +44,13 @@ contracts pass.
 
 ### Tests First
 
-- [ ] T004 [P] Write and run failing public error hierarchy, nonempty remediation, and English docstring contract tests in `tests/contract/test_public_errors.py`
-- [ ] T005 [P] Write and run failing namespaced logger, `NullHandler`, root-logger isolation, and idempotent configuration tests in `tests/unit/test_logging.py`
+- [X] T004 [P] Write and run failing public error hierarchy, nonempty remediation, and English docstring contract tests in `tests/contract/test_public_errors.py`
+- [X] T005 [P] Write and run failing namespaced logger, `NullHandler`, root-logger isolation, and idempotent configuration tests in `tests/unit/test_logging.py`
 
 ### Minimal Implementation
 
-- [ ] T006 [P] Implement documented `AISDKError`, `ConfigError`, and `DeviceError` classes with validated message and remediation fields in `src/ceia_aisdk/errors.py`
-- [ ] T007 [P] Implement side-effect-safe namespace logging setup with English module and method docstrings in `src/ceia_aisdk/_logging.py`
+- [X] T006 [P] Implement documented `AISDKError`, `ConfigError`, and `DeviceError` classes with validated message and remediation fields in `src/ceia_aisdk/errors.py`
+- [X] T007 [P] Implement side-effect-safe namespace logging setup with English module and method docstrings in `src/ceia_aisdk/_logging.py`
 
 **Checkpoint**: `uv run pytest tests/contract/test_public_errors.py tests/unit/test_logging.py`
 passes without changing root logging configuration.
@@ -67,17 +67,17 @@ and discover the fully documented `doctor` command through root help.
 
 ### Tests First
 
-- [ ] T008 [P] [US1] Write and run failing package-name, version, lightweight-import, public-export, Python-range, and Linux-classifier contract tests in `tests/contract/test_package_api.py`
-- [ ] T009 [P] [US1] Write and run failing root and `doctor` help completeness, English text, command discovery, and executable-example tests in `tests/contract/test_cli_help.py`
-- [ ] T010 [P] [US1] Write and run failing wheel/sdist metadata, isolated installation, console-entry-point, artifact-content, size-budget, and no-publication tests in `tests/integration/test_installed_artifacts.py`
-- [ ] T011 [P] [US1] Write and run the failing fresh-process import p95 and forbidden-backend import tests in `tests/performance/test_import_timing.py`
+- [X] T008 [P] [US1] Write and run failing package-name, version, lightweight-import, public-export, Python-range, and Linux-classifier contract tests in `tests/contract/test_package_api.py`
+- [X] T009 [P] [US1] Write and run failing root and `doctor` help completeness, English text, command discovery, and executable-example tests in `tests/contract/test_cli_help.py`
+- [X] T010 [P] [US1] Write and run failing wheel/sdist metadata, isolated installation, console-entry-point, artifact-content, size-budget, and no-publication tests in `tests/integration/test_installed_artifacts.py`
+- [X] T011 [P] [US1] Write and run the failing fresh-process import p95 and forbidden-backend import tests in `tests/performance/test_import_timing.py`
 
 ### Minimal Implementation
 
-- [ ] T012 [US1] Implement the lightweight package root, metadata-backed `__version__`, public error exports, `NullHandler`, and English module docstring in `src/ceia_aisdk/__init__.py`
-- [ ] T013 [US1] Implement the Typer root application and documented `doctor` command shell with complete English help and examples in `src/ceia_aisdk/cli.py`
-- [ ] T014 [P] [US1] Replace the placeholder project README with English Linux x86_64 scope, `uv` contributor setup, local-install instructions, reserved CUDA-extra warning, CLI discovery examples, and PRD-02 publication boundary in `README.md`
-- [ ] T015 [US1] Complete package metadata and build inclusion rules until isolated wheel and sdist smoke tests pass in `pyproject.toml`, `uv.lock`, and `tests/integration/test_installed_artifacts.py`
+- [X] T012 [US1] Implement the lightweight package root, metadata-backed `__version__`, public error exports, `NullHandler`, and English module docstring in `src/ceia_aisdk/__init__.py`
+- [X] T013 [US1] Implement the Typer root application and documented `doctor` command shell with complete English help and examples in `src/ceia_aisdk/cli.py`
+- [X] T014 [P] [US1] Replace the placeholder project README with English Linux x86_64 scope, `uv` contributor setup, local-install instructions, reserved CUDA-extra warning, CLI discovery examples, and PRD-02 publication boundary in `README.md`
+- [X] T015 [US1] Complete package metadata and build inclusion rules until isolated wheel and sdist smoke tests pass in `pyproject.toml`, `uv.lock`, and `tests/integration/test_installed_artifacts.py`
 
 **Checkpoint**: User Story 1 works from both local artifact types without loading inference
 backends or publishing to PyPI.
@@ -94,15 +94,15 @@ directory, including missing, empty, malformed, unreadable, and shadowed-invalid
 
 ### Tests First
 
-- [ ] T016 [P] [US3] Write and run failing field-by-field precedence, defaults, type validation, strict environment parsing, path expansion, missing/empty TOML, malformed TOML, and privacy tests in `tests/unit/test_config.py`
-- [ ] T017 [P] [US3] Extend and run failing immutability, slots, `AISDKConfig.load` signature, root export, and no-side-effect API contracts in `tests/contract/test_package_api.py`
+- [X] T016 [P] [US3] Write and run failing field-by-field precedence, defaults, type validation, strict environment parsing, path expansion, missing/empty TOML, malformed TOML, and privacy tests in `tests/unit/test_config.py`
+- [X] T017 [P] [US3] Extend and run failing immutability, slots, `AISDKConfig.load` signature, root export, and no-side-effect API contracts in `tests/contract/test_package_api.py`
 
 ### Minimal Implementation
 
-- [ ] T018 [US3] Implement immutable `AISDKConfig`, standard-library TOML loading, independent source resolution, strict validation, and privacy-safe `ConfigError` handling with English docstrings in `src/ceia_aisdk/config.py`
-- [ ] T019 [US3] Export `AISDKConfig` without importing CLI or hardware probes in `src/ceia_aisdk/__init__.py`
-- [ ] T020 [US3] Add English configuration precedence, TOML, environment, defaults, strict-value, and mixed-source examples to `README.md`
-- [ ] T021 [US3] Run and make the independent configuration and package API suites pass through `uv` for `tests/unit/test_config.py` and `tests/contract/test_package_api.py`
+- [X] T018 [US3] Implement immutable `AISDKConfig`, standard-library TOML loading, independent source resolution, strict validation, and privacy-safe `ConfigError` handling with English docstrings in `src/ceia_aisdk/config.py`
+- [X] T019 [US3] Export `AISDKConfig` without importing CLI or hardware probes in `src/ceia_aisdk/__init__.py`
+- [X] T020 [US3] Add English configuration precedence, TOML, environment, defaults, strict-value, and mixed-source examples to `README.md`
+- [X] T021 [US3] Run and make the independent configuration and package API suites pass through `uv` for `tests/unit/test_config.py` and `tests/contract/test_package_api.py`
 
 **Checkpoint**: User Story 3 passes independently with no directory creation, network call,
 hardware probe, or root-logger mutation.
@@ -120,18 +120,18 @@ network, and completion within 5 seconds; repeat GPU paths with deterministic pr
 
 ### Tests First
 
-- [ ] T022 [P] [US2] Write and run failing immutable diagnostic-check/report, usability, field-order, path-normalization, copy-block, and privacy tests in `tests/unit/test_diagnostics.py`
-- [ ] T023 [P] [US2] Write and run failing bounded NVIDIA process, CSV parsing, timeout, no-GPU, single-GPU, multi-GPU, prohibited-compute, MIG, and internal device-selection tests in `tests/unit/test_hardware.py`
-- [ ] T024 [P] [US2] Write and run failing installed `doctor` CPU/GPU/forced-CUDA, exit-code, stdout/stderr, redirected-output, `TERM=dumb`, `NO_COLOR`, terminal-width, and privacy tests in `tests/integration/test_doctor.py`
-- [ ] T025 [P] [US2] Write and run failing CPU-only 5-second timeout, 2-second probe timeout, zero-network, and no-inference-import tests in `tests/performance/test_doctor_timing.py`
+- [X] T022 [P] [US2] Write and run failing immutable diagnostic-check/report, usability, field-order, path-normalization, copy-block, and privacy tests in `tests/unit/test_diagnostics.py`
+- [X] T023 [P] [US2] Write and run failing bounded NVIDIA process, CSV parsing, timeout, no-GPU, single-GPU, multi-GPU, prohibited-compute, MIG, and internal device-selection tests in `tests/unit/test_hardware.py`
+- [X] T024 [P] [US2] Write and run failing installed `doctor` CPU/GPU/forced-CUDA, exit-code, stdout/stderr, redirected-output, `TERM=dumb`, `NO_COLOR`, terminal-width, and privacy tests in `tests/integration/test_doctor.py`
+- [X] T025 [P] [US2] Write and run failing CPU-only 5-second timeout, 2-second probe timeout, zero-network, and no-inference-import tests in `tests/performance/test_doctor_timing.py`
 
 ### Minimal Implementation
 
-- [ ] T026 [US2] Implement private immutable probe records, one-shot `nvidia-smi` execution, strict bounded CSV parsing, sanitized probe status, and internal selection in `src/ceia_aisdk/hardware.py`
-- [ ] T027 [US2] Implement immutable diagnostic checks/reports, platform and package collection, privacy sanitization, deterministic field order, optional-group reporting, and copy-block serialization in `src/ceia_aisdk/_diagnostics.py`
-- [ ] T028 [US2] Complete `doctor` collection, Rich TTY rendering, deterministic plain rendering, help examples, and exit-code behavior in `src/ceia_aisdk/cli.py`
-- [ ] T029 [US2] Apply `AISDKConfig.log_level` only to the package namespace and connect diagnostic logging without root side effects in `src/ceia_aisdk/_logging.py` and `src/ceia_aisdk/cli.py`
-- [ ] T030 [US2] Run and make the independent diagnostic, hardware, CLI integration, timing, and network-isolation suites pass for `tests/unit/test_diagnostics.py`, `tests/unit/test_hardware.py`, `tests/integration/test_doctor.py`, and `tests/performance/test_doctor_timing.py`
+- [X] T026 [US2] Implement private immutable probe records, one-shot `nvidia-smi` execution, strict bounded CSV parsing, sanitized probe status, and internal selection in `src/ceia_aisdk/hardware.py`
+- [X] T027 [US2] Implement immutable diagnostic checks/reports, platform and package collection, privacy sanitization, deterministic field order, optional-group reporting, and copy-block serialization in `src/ceia_aisdk/_diagnostics.py`
+- [X] T028 [US2] Complete `doctor` collection, Rich TTY rendering, deterministic plain rendering, help examples, and exit-code behavior in `src/ceia_aisdk/cli.py`
+- [X] T029 [US2] Apply `AISDKConfig.log_level` only to the package namespace and connect diagnostic logging without root side effects in `src/ceia_aisdk/_logging.py` and `src/ceia_aisdk/cli.py`
+- [X] T030 [US2] Run and make the independent diagnostic, hardware, CLI integration, timing, and network-isolation suites pass for `tests/unit/test_diagnostics.py`, `tests/unit/test_hardware.py`, `tests/integration/test_doctor.py`, and `tests/performance/test_doctor_timing.py`
 
 **Checkpoint**: User Story 2 is complete on CPU and mocked NVIDIA environments; real NVIDIA
 validation remains an explicit reference-machine gate.
@@ -149,15 +149,15 @@ multiple, prohibited, MIG, and forced-index probe fixtures and verify return val
 
 ### Tests First
 
-- [ ] T031 [P] [US4] Extend and run failing `GPUInfo`, `detect_gpus`, `get_device`, package-root export, signature, immutability, unit, and forbidden-import contracts in `tests/contract/test_package_api.py`
-- [ ] T032 [P] [US4] Extend and run failing direct-API CPU short-circuit, lowest-index selection, forced `cuda`, forced `cuda:N`, invalid syntax, quiet fallback, quoted-name, malformed-output, and VRAM invariant tests in `tests/unit/test_hardware.py`
+- [X] T031 [P] [US4] Extend and run failing `GPUInfo`, `detect_gpus`, `get_device`, package-root export, signature, immutability, unit, and forbidden-import contracts in `tests/contract/test_package_api.py`
+- [X] T032 [P] [US4] Extend and run failing direct-API CPU short-circuit, lowest-index selection, forced `cuda`, forced `cuda:N`, invalid syntax, quiet fallback, quoted-name, malformed-output, and VRAM invariant tests in `tests/unit/test_hardware.py`
 
 ### Minimal Implementation
 
-- [ ] T033 [US4] Implement documented public `GPUInfo`, `detect_gpus()`, and `get_device()` wrappers over the tested bounded snapshot and selection logic in `src/ceia_aisdk/hardware.py`
-- [ ] T034 [US4] Re-export the public hardware API while preserving the import-time and no-probe contracts in `src/ceia_aisdk/__init__.py`
-- [ ] T035 [US4] Add English CPU, automatic CUDA, forced CUDA, index semantics, MiB units, MIG limitation, and no-inference-guarantee examples to `README.md`
-- [ ] T036 [US4] Run and make the direct hardware API contract and unit suites pass for `tests/contract/test_package_api.py` and `tests/unit/test_hardware.py`
+- [X] T033 [US4] Implement documented public `GPUInfo`, `detect_gpus()`, and `get_device()` wrappers over the tested bounded snapshot and selection logic in `src/ceia_aisdk/hardware.py`
+- [X] T034 [US4] Re-export the public hardware API while preserving the import-time and no-probe contracts in `src/ceia_aisdk/__init__.py`
+- [X] T035 [US4] Add English CPU, automatic CUDA, forced CUDA, index semantics, MiB units, MIG limitation, and no-inference-guarantee examples to `README.md`
+- [X] T036 [US4] Run and make the direct hardware API contract and unit suites pass for `tests/contract/test_package_api.py` and `tests/unit/test_hardware.py`
 
 **Checkpoint**: User Story 4 is independently usable without `doctor`, model aliases, inference
 dependencies, or network access.
@@ -175,16 +175,16 @@ output, and absence of native stack traces.
 
 ### Tests First
 
-- [ ] T037 [P] [US5] Extend and run failing empty-message rejection, empty-remediation rejection, exception chaining, `ConfigError`, `DeviceError`, and sanitized string contract tests in `tests/contract/test_public_errors.py`
-- [ ] T038 [P] [US5] Extend and run failing end-to-end invalid-TOML, invalid-environment, forced-CUDA, remediation-output, no-stack-trace, and no-file-content tests in `tests/integration/test_doctor.py`
+- [X] T037 [P] [US5] Extend and run failing empty-message rejection, empty-remediation rejection, exception chaining, `ConfigError`, `DeviceError`, and sanitized string contract tests in `tests/contract/test_public_errors.py`
+- [X] T038 [P] [US5] Extend and run failing end-to-end invalid-TOML, invalid-environment, forced-CUDA, remediation-output, no-stack-trace, and no-file-content tests in `tests/integration/test_doctor.py`
 
 ### Minimal Implementation
 
-- [ ] T039 [P] [US5] Complete field/source-aware English `ConfigError` messages and concrete remediation without raw-value disclosure in `src/ceia_aisdk/config.py`
-- [ ] T040 [P] [US5] Complete unavailable-driver, no-GPU, invalid-index, invalid-syntax, and probe-failure `DeviceError` messages and remediation in `src/ceia_aisdk/hardware.py`
-- [ ] T041 [US5] Render public error remediation consistently in diagnostic checks, plain/Rich output, the copyable block, and stderr without native traces in `src/ceia_aisdk/_diagnostics.py` and `src/ceia_aisdk/cli.py`
-- [ ] T042 [US5] Add English troubleshooting examples for configuration and forced CUDA failures to `README.md`
-- [ ] T043 [US5] Run and make the error contract and end-to-end remediation suites pass for `tests/contract/test_public_errors.py` and `tests/integration/test_doctor.py`
+- [X] T039 [P] [US5] Complete field/source-aware English `ConfigError` messages and concrete remediation without raw-value disclosure in `src/ceia_aisdk/config.py`
+- [X] T040 [P] [US5] Complete unavailable-driver, no-GPU, invalid-index, invalid-syntax, and probe-failure `DeviceError` messages and remediation in `src/ceia_aisdk/hardware.py`
+- [X] T041 [US5] Render public error remediation consistently in diagnostic checks, plain/Rich output, the copyable block, and stderr without native traces in `src/ceia_aisdk/_diagnostics.py` and `src/ceia_aisdk/cli.py`
+- [X] T042 [US5] Add English troubleshooting examples for configuration and forced CUDA failures to `README.md`
+- [X] T043 [US5] Run and make the error contract and end-to-end remediation suites pass for `tests/contract/test_public_errors.py` and `tests/integration/test_doctor.py`
 
 **Checkpoint**: User Story 5 passes through Python and CLI, and automatic CPU fallback remains a
 supported non-error state.
@@ -196,11 +196,11 @@ supported non-error state.
 **Purpose**: Enforce the constitution and validate the complete local release candidate without
 publishing it.
 
-- [ ] T044 [P] Add the Python 3.11-3.13 `uv` matrix, locked synchronization, lint, docstring, spelling, test, build, artifact inspection, and isolated smoke-test gates to `.github/workflows/ci.yml`
-- [ ] T045 [P] Audit and complete English module, class, function, and method docstrings against Ruff and pydoclint in `src/ceia_aisdk/__init__.py`, `src/ceia_aisdk/_diagnostics.py`, `src/ceia_aisdk/_logging.py`, `src/ceia_aisdk/cli.py`, `src/ceia_aisdk/config.py`, `src/ceia_aisdk/errors.py`, and `src/ceia_aisdk/hardware.py`
-- [ ] T046 Execute every validation scenario and command in `specs/001-sdk-foundations/quickstart.md`, correct any inaccurate expectation in that file, and remove temporary `doctor.txt` and `dist/` artifacts
-- [ ] T047 [P] Run the optional NVIDIA reference comparison and record the GPU name/index and ±256 MiB result, or the explicit absence of a suitable runner, in `specs/001-sdk-foundations/checklists/requirements.md`
-- [ ] T048 Run all locked quality, English-language, test, network-isolation, Python-matrix, wheel/sdist, metadata, artifact-content, and size gates without invoking `uv publish`, resolving failures in `pyproject.toml`, `uv.lock`, `src/ceia_aisdk/`, `tests/`, `README.md`, and `specs/001-sdk-foundations/quickstart.md`
+- [X] T044 [P] Add the Python 3.11-3.13 `uv` matrix, locked synchronization, lint, docstring, spelling, test, build, artifact inspection, and isolated smoke-test gates to `.github/workflows/ci.yml`
+- [X] T045 [P] Audit and complete English module, class, function, and method docstrings against Ruff and pydoclint in `src/ceia_aisdk/__init__.py`, `src/ceia_aisdk/_diagnostics.py`, `src/ceia_aisdk/_logging.py`, `src/ceia_aisdk/cli.py`, `src/ceia_aisdk/config.py`, `src/ceia_aisdk/errors.py`, and `src/ceia_aisdk/hardware.py`
+- [X] T046 Execute every validation scenario and command in `specs/001-sdk-foundations/quickstart.md`, correct any inaccurate expectation in that file, and remove temporary `doctor.txt` and `dist/` artifacts
+- [X] T047 [P] Run the optional NVIDIA reference comparison and record the GPU name/index and ±256 MiB result, or the explicit absence of a suitable runner, in `specs/001-sdk-foundations/checklists/requirements.md`
+- [X] T048 Run all locked quality, English-language, test, network-isolation, Python-matrix, wheel/sdist, metadata, artifact-content, and size gates without invoking `uv publish`, resolving failures in `pyproject.toml`, `uv.lock`, `src/ceia_aisdk/`, `tests/`, `README.md`, and `specs/001-sdk-foundations/quickstart.md`
 
 **Checkpoint**: All constitutional gates pass, local artifacts are release-ready, and no public
 upload has occurred.

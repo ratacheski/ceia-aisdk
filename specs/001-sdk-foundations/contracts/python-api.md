@@ -39,8 +39,7 @@ def load(
     cache_dir: str | os.PathLike[str] | None = None,
     log_level: str | None = None,
     offline: bool | None = None,
-) -> AISDKConfig:
-    ...
+) -> AISDKConfig: ...
 ```
 
 Contract:
@@ -82,8 +81,7 @@ Contract:
 ### `detect_gpus`
 
 ```python
-def detect_gpus() -> tuple[GPUInfo, ...]:
-    ...
+def detect_gpus() -> tuple[GPUInfo, ...]: ...
 ```
 
 Contract:
@@ -100,8 +98,7 @@ Contract:
 ### `get_device`
 
 ```python
-def get_device(device: str = "auto") -> str:
-    ...
+def get_device(device: str = "auto") -> str: ...
 ```
 
 Accepted input:
@@ -136,8 +133,7 @@ Contract:
 class AISDKError(Exception):
     remediation: str
 
-    def __init__(self, message: str, *, remediation: str) -> None:
-        ...
+    def __init__(self, message: str, *, remediation: str) -> None: ...
 ```
 
 Contract:

@@ -36,3 +36,11 @@
 - Internal details cited in the PRD, such as files, frameworks, and the GPU probing mechanism, were deliberately omitted.
 - Constitution version 1.0.0 was ratified after the initial specification validation and governs
   planning and all downstream artifacts.
+
+## Reference GPU check (T047)
+
+No suitable NVIDIA reference runner was available on 2026-09-01. `nvidia-smi` is
+present on PATH but cannot communicate with an NVIDIA driver, so SC-005 (GPU
+name/index and ±256 MiB free-memory comparison) remains unvalidated on a real
+device. Hosted CI uses mocked NVIDIA probes.
+

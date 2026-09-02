@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# uv / packaging
+.python-version
+
+# Tests and coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# Diagnostic and local validation output
+doctor.txt
+*.log
+
+# Environment and secrets
+.env
+.env.*
+
+# OS and editor
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+*~
+.vscode/
+.idea/

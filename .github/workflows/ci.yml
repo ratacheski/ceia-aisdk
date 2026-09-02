@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify the lockfile
+        run: uv lock --check
+
+      - name: Synchronize the locked environment
+        run: uv sync --locked --all-groups --all-extras
+
+      - name: Lint, format, docstrings, and spelling
+        if: matrix.python-version == '3.13'
+        run: |
+          uv run ruff format --check .
+          uv run ruff check .
+          uv run pydoclint src tests
+          uv run codespell .
+
+      - name: Run the test suite
+        run: uv run pytest
+
+      - name: Build and inspect artifacts
+        if: matrix.python-version == '3.13'
+        run: |
+          rm -rf dist
+          uv build --no-sources
+          uv run twine check dist/*
+          uv run check-wheel-contents dist/*.whl
+          WHEEL="$(ls dist/*.whl)"
+          SDIST="$(ls dist/*.tar.gz)"
+          uv run --isolated --no-project --with "$WHEEL" python -c "import ceia_aisdk; print(ceia_aisdk.__version__)"
+          uv run --isolated --no-project --with "$WHEEL" ceia-aisdk --help
+          uv run --isolated --no-project --with "$SDIST" python -c "import ceia_aisdk; print(ceia_aisdk.__version__)"
