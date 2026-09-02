@@ -328,10 +328,10 @@ public `0.1.0` upload after US1–US6.
 - [X] T055 Complete the manual CPU first-chat checklist in
       `specs/003-llm-module/quickstart.md` section 8 on the reference Linux x86_64 machine
       (15-minute path; CUDA compile excluded)
-- [ ] T056 Set `project.version` to `0.1.0` in `pyproject.toml`, rebuild, inspect artifacts
+- [X] T056 Set `project.version` to `0.1.0` in `pyproject.toml`, rebuild, inspect artifacts
       with Twine and `check-wheel-contents`, and publish with `uv publish` per
       `specs/003-llm-module/contracts/packaging.md`
-- [ ] T057 Verify `ceia-aisdk==0.1.0` on the public index and that the project page matches
+- [X] T057 Verify `ceia-aisdk==0.1.0` on the public index and that the project page matches
       the README quickstart (Linux only, no Windows promise, no weights in the files)
 
 **Checkpoint**: Public product exists. US7 may still be unfinished.
