@@ -18,6 +18,10 @@ env/
 # uv / packaging
 .python-version
 
+# Runtime model weights (never commit artifacts)
+*.gguf
+*.onnx
+
 # Tests and coverage
 .pytest_cache/
 .coverage

@@ -83,6 +83,17 @@ def test_artifact_contents_exclude_tests_and_runtime_assets(artifacts: tuple[Pat
     assert not any("/tests/" in name for name in sdist_names)
 
 
+def test_wheel_includes_catalog_yaml_and_excludes_weights(artifacts: tuple[Path, Path]) -> None:
+    wheel, sdist = artifacts
+    with zipfile.ZipFile(wheel) as archive:
+        names = archive.namelist()
+    assert any(name.endswith("ceia_aisdk/registry/_internal_catalog.yaml") for name in names)
+    assert not any(name.endswith((".gguf", ".onnx", ".bin")) for name in names)
+    with tarfile.open(sdist, "r:gz") as archive:
+        sdist_names = archive.getnames()
+    assert any(name.endswith("registry/_internal_catalog.yaml") for name in sdist_names)
+
+
 def test_artifact_size_budget(artifacts: tuple[Path, Path]) -> None:
     wheel, sdist = artifacts
     assert wheel.stat().st_size <= MAX_ARTIFACT_BYTES
@@ -151,6 +162,27 @@ def test_isolated_wheel_and_sdist_smoke(artifacts: tuple[Path, Path]) -> None:
     )
     assert help_result.returncode == 0, help_result.stderr
     assert "doctor" in help_result.stdout
+    assert "model" in help_result.stdout
+    model_help = subprocess.run(
+        [
+            "uv",
+            "run",
+            "--isolated",
+            "--no-project",
+            "--offline",
+            "--with",
+            str(wheel),
+            "ceia-aisdk",
+            "model",
+            "--help",
+        ],
+        cwd=REPO_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert model_help.returncode == 0, model_help.stderr
+    assert "pull" in model_help.stdout
 
 
 def test_no_publication_command_is_invoked(artifacts: tuple[Path, Path]) -> None:

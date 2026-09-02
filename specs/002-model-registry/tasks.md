@@ -28,12 +28,12 @@ their checkpoints.
 
 **Purpose**: Add runtime dependencies, registry package layout, and shared test fixtures.
 
-- [ ] T001 Add `httpx` and `pyyaml` as runtime dependencies with `uv add` and commit the lock
+- [X] T001 Add `httpx` and `pyyaml` as runtime dependencies with `uv add` and commit the lock
       in `pyproject.toml` and `uv.lock`
-- [ ] T002 [P] Create the registry package skeleton with English module docstrings in
+- [X] T002 [P] Create the registry package skeleton with English module docstrings in
       `src/ceia_aisdk/registry/__init__.py`, `src/ceia_aisdk/registry/catalog.py`,
       `src/ceia_aisdk/registry/downloader.py`, and `src/ceia_aisdk/registry/cache.py`
-- [ ] T003 [P] Add a generated ≥ 16 MiB fixture, a loopback HTTP server with `Range` and
+- [X] T003 [P] Add a generated ≥ 16 MiB fixture, a loopback HTTP server with `Range` and
       request counting, isolated `cache_dir`, and `pytest.mark.enable_socket` helpers in
       `tests/conftest.py`
 
@@ -52,26 +52,26 @@ contracts pass.
 
 ### Tests First
 
-- [ ] T004 [P] Write and run failing `ModelNotFoundError` and `DownloadError` hierarchy,
+- [X] T004 [P] Write and run failing `ModelNotFoundError` and `DownloadError` hierarchy,
       nonempty remediation, opacity of origin URLs, and English docstring tests in
       `tests/contract/test_public_errors.py`
-- [ ] T005 [P] Write and run failing schema, `latest` pin, single-URL, SHA-256, essentials,
+- [X] T005 [P] Write and run failing schema, `latest` pin, single-URL, SHA-256, essentials,
       and invalid-document tests in `tests/unit/test_registry_catalog.py`
-- [ ] T006 [P] Write and run failing alias/`..`/absolute-path/cache-destination sanitization
+- [X] T006 [P] Write and run failing alias/`..`/absolute-path/cache-destination sanitization
       tests in `tests/unit/test_registry_sanitize.py`
 
 ### Minimal Implementation
 
-- [ ] T007 [P] Implement documented `ModelNotFoundError` and `DownloadError` in
+- [X] T007 [P] Implement documented `ModelNotFoundError` and `DownloadError` in
       `src/ceia_aisdk/errors.py` and re-export them from `src/ceia_aisdk/__init__.py` without
       importing `ceia_aisdk.registry`
-- [ ] T008 Implement catalog document loading, schema validation, and production pin records
+- [X] T008 Implement catalog document loading, schema validation, and production pin records
       in `src/ceia_aisdk/registry/catalog.py`
-- [ ] T009 [P] Write the bundled production catalog for `llm/small@1`, `llm/medium@1`, and
+- [X] T009 [P] Write the bundled production catalog for `llm/small@1`, `llm/medium@1`, and
       `llm/large@1` from `specs/002-model-registry/contracts/catalog.md` in
       `src/ceia_aisdk/registry/_internal_catalog.yaml` and include it as package data in
       `pyproject.toml`
-- [ ] T010 Implement destination sanitization so writes cannot escape `cache_dir/models` or
+- [X] T010 Implement destination sanitization so writes cannot escape `cache_dir/models` or
       `cache_dir/models/.tmp` in `src/ceia_aisdk/registry/cache.py`
 
 **Checkpoint**: `uv run pytest tests/contract/test_public_errors.py
@@ -90,24 +90,24 @@ confirm CLI context treats `small` as `llm/small` and programmatic `small` is re
 
 ### Tests First
 
-- [ ] T011 [P] [US1] Write and run failing `@N`, `@latest`, domain-qualified, unqualified
+- [X] T011 [P] [US1] Write and run failing `@N`, `@latest`, domain-qualified, unqualified
       programmatic rejection, CLI `small` → `llm/small`, and `ModelNotFoundError` suggestion
       tests in `tests/unit/test_registry_resolve.py`
-- [ ] T012 [P] [US1] Write and run failing `resolve` signature, `ResolvedAlias` opacity, and
+- [X] T012 [P] [US1] Write and run failing `resolve` signature, `ResolvedAlias` opacity, and
       no-download contract tests in `tests/contract/test_registry_api.py`
-- [ ] T013 [P] [US1] Write and run failing root-help `model` discovery and `ceia-aisdk model
+- [X] T013 [P] [US1] Write and run failing root-help `model` discovery and `ceia-aisdk model
       --help` command-list tests in `tests/contract/test_model_cli_help.py`
-- [ ] T014 [P] [US1] Extend and run failing fresh-import tests that `httpx` and `yaml` stay
+- [X] T014 [P] [US1] Extend and run failing fresh-import tests that `httpx` and `yaml` stay
       unloaded in `tests/contract/test_package_api.py`
 
 ### Minimal Implementation
 
-- [ ] T015 [US1] Implement `resolve`, `ResolvedAlias`, and CLI-versus-programmatic alias rules
+- [X] T015 [US1] Implement `resolve`, `ResolvedAlias`, and CLI-versus-programmatic alias rules
       in `src/ceia_aisdk/registry/catalog.py` and export them from
       `src/ceia_aisdk/registry/__init__.py`
-- [ ] T016 [US1] Mount the Typer `model` sub-application with complete English group help in
+- [X] T016 [US1] Mount the Typer `model` sub-application with complete English group help in
       `src/ceia_aisdk/_model_cli.py` and `src/ceia_aisdk/cli.py`
-- [ ] T017 [US1] Run and make the US1 suite pass through `uv` for
+- [X] T017 [US1] Run and make the US1 suite pass through `uv` for
       `tests/unit/test_registry_resolve.py`, `tests/contract/test_registry_api.py`,
       `tests/contract/test_model_cli_help.py`, and `tests/contract/test_package_api.py`
 
@@ -127,32 +127,32 @@ offline miss ≤ 100 ms.
 
 ### Tests First
 
-- [ ] T018 [P] [US2] Write and run failing pull, checksum promotion, and `where` tests in
+- [X] T018 [P] [US2] Write and run failing pull, checksum promotion, and `where` tests in
       `tests/integration/test_model_download.py`
-- [ ] T019 [P] [US2] Write and run failing resume-after-interrupt tests that count `Range`
+- [X] T019 [P] [US2] Write and run failing resume-after-interrupt tests that count `Range`
       requests in `tests/integration/test_model_resume.py`
-- [ ] T020 [P] [US2] Write and run failing offline cache-miss timing and no-socket tests in
+- [X] T020 [P] [US2] Write and run failing offline cache-miss timing and no-socket tests in
       `tests/integration/test_model_offline.py`
-- [ ] T021 [P] [US2] Write and run failing warm-cache ≤ 2 s and zero-GET tests in
+- [X] T021 [P] [US2] Write and run failing warm-cache ≤ 2 s and zero-GET tests in
       `tests/performance/test_warm_cache.py`
-- [ ] T022 [P] [US2] Write and run failing offline-miss ≤ 100 ms tests in
+- [X] T022 [P] [US2] Write and run failing offline-miss ≤ 100 ms tests in
       `tests/performance/test_offline_miss.py`
-- [ ] T023 [P] [US2] Extend `tests/contract/test_model_cli_help.py` with failing `pull`,
+- [X] T023 [P] [US2] Extend `tests/contract/test_model_cli_help.py` with failing `pull`,
       `where`, and `verify` help, examples, and unsigned-catalog note on `info --help` (do not
       execute production `pull llm/small` examples)
 
 ### Minimal Implementation
 
-- [ ] T024 [US2] Implement resumable HTTP download, SHA-256, tmp/`fsync`/replace, and lazy
+- [X] T024 [US2] Implement resumable HTTP download, SHA-256, tmp/`fsync`/replace, and lazy
       `httpx` import in `src/ceia_aisdk/registry/downloader.py`
-- [ ] T025 [US2] Implement `ensure_local`, sidecar write, offline short-circuit, and corrupt
+- [X] T025 [US2] Implement `ensure_local`, sidecar write, offline short-circuit, and corrupt
       re-download in `src/ceia_aisdk/registry/cache.py` and
       `src/ceia_aisdk/registry/__init__.py`
-- [ ] T026 [US2] Implement `model pull ALIAS`, `model where`, and `model verify` with TTY
+- [X] T026 [US2] Implement `model pull ALIAS`, `model where`, and `model verify` with TTY
       progress and English failure/`remediation` output in `src/ceia_aisdk/_model_cli.py`
-- [ ] T027 [US2] Honor `AISDKConfig.offline` / `CEIA_AISDK_OFFLINE` before opening a client in
+- [X] T027 [US2] Honor `AISDKConfig.offline` / `CEIA_AISDK_OFFLINE` before opening a client in
       `src/ceia_aisdk/registry/cache.py` and `src/ceia_aisdk/registry/downloader.py`
-- [ ] T028 [US2] Run and make the US2 download, resume, offline, performance, and help suites
+- [X] T028 [US2] Run and make the US2 download, resume, offline, performance, and help suites
       pass through `uv` using only loopback fixtures
 
 **Checkpoint**: Fixture pulls are integrity-checked, resumable, and offline-safe. Production
@@ -170,26 +170,26 @@ same alias; `list` then `rm`; confirm `info`/exception snapshots contain no upst
 
 ### Tests First
 
-- [ ] T029 [P] [US3] Write and run failing opaque-path and sidecar layout tests in
+- [X] T029 [P] [US3] Write and run failing opaque-path and sidecar layout tests in
       `tests/unit/test_registry_cache.py`
-- [ ] T030 [P] [US3] Write and run failing two-process concurrent-pull tests in
+- [X] T030 [P] [US3] Write and run failing two-process concurrent-pull tests in
       `tests/integration/test_model_concurrency.py`
-- [ ] T031 [P] [US3] Write and run failing `list`/`rm` CLI tests in
+- [X] T031 [P] [US3] Write and run failing `list`/`rm` CLI tests in
       `tests/integration/test_model_cli.py`
-- [ ] T032 [P] [US3] Write and run failing `info` and `str(exception)` opacity snapshots in
+- [X] T032 [P] [US3] Write and run failing `info` and `str(exception)` opacity snapshots in
       `tests/contract/test_registry_opacity.py`
 
 ### Minimal Implementation
 
-- [ ] T033 [US3] Store cataloged files as `<cache_dir>/models/<domain>/<size>-v<N>.bin` with
+- [X] T033 [US3] Store cataloged files as `<cache_dir>/models/<domain>/<size>-v<N>.bin` with
       sidecar and lock paths in `src/ceia_aisdk/registry/cache.py`
-- [ ] T034 [US3] Implement exclusive `fcntl.flock` wait-and-reuse in
+- [X] T034 [US3] Implement exclusive `fcntl.flock` wait-and-reuse in
       `src/ceia_aisdk/registry/cache.py`
-- [ ] T035 [US3] Implement `model list` and `model rm` in `src/ceia_aisdk/_model_cli.py`
-- [ ] T036 [US3] Keep WARNING/ERROR logs and public exceptions free of catalog URLs in
+- [X] T035 [US3] Implement `model list` and `model rm` in `src/ceia_aisdk/_model_cli.py`
+- [X] T036 [US3] Keep WARNING/ERROR logs and public exceptions free of catalog URLs in
       `src/ceia_aisdk/registry/downloader.py`, `src/ceia_aisdk/registry/catalog.py`, and
       `src/ceia_aisdk/errors.py`
-- [ ] T037 [US3] Run and make the US3 cache, concurrency, CLI, and opacity suites pass through
+- [X] T037 [US3] Run and make the US3 cache, concurrency, CLI, and opacity suites pass through
       `uv`
 
 **Checkpoint**: Two processes cannot mix a file. Cache names and public output stay opaque.
@@ -206,21 +206,21 @@ fixture whose public license would be commercially sensitive; confirm no `Licens
 
 ### Tests First
 
-- [ ] T038 [P] [US4] Extend and run failing public-field-only `get_public_metadata` tests in
+- [X] T038 [P] [US4] Extend and run failing public-field-only `get_public_metadata` tests in
       `tests/contract/test_registry_api.py`
-- [ ] T039 [P] [US4] Write and run failing `model info` field and help-text tests in
+- [X] T039 [P] [US4] Write and run failing `model info` field and help-text tests in
       `tests/integration/test_model_cli.py`
-- [ ] T040 [P] [US4] Write and run a failing assertion that `LicenseError` is absent and pull
+- [X] T040 [P] [US4] Write and run a failing assertion that `LicenseError` is absent and pull
       ignores `commercial_use` in `tests/contract/test_public_errors.py` and
       `tests/integration/test_model_download.py`
 
 ### Minimal Implementation
 
-- [ ] T041 [US4] Implement `PublicModelMetadata` and `get_public_metadata` in
+- [X] T041 [US4] Implement `PublicModelMetadata` and `get_public_metadata` in
       `src/ceia_aisdk/registry/catalog.py` and `src/ceia_aisdk/registry/__init__.py`
-- [ ] T042 [US4] Implement `model info` output and `--help` authenticity warning in
+- [X] T042 [US4] Implement `model info` output and `--help` authenticity warning in
       `src/ceia_aisdk/_model_cli.py`
-- [ ] T043 [US4] Run and make the US4 API, CLI, and license-non-blocking suites pass through
+- [X] T043 [US4] Run and make the US4 API, CLI, and license-non-blocking suites pass through
       `uv`
 
 **Checkpoint**: Public metadata is complete and informational. Pull is never license-gated.
@@ -237,18 +237,18 @@ the override; unset the variable and confirm the bundled catalog returns.
 
 ### Tests First
 
-- [ ] T044 [P] [US5] Write and run failing local and HTTP override, no-fallback, and invalid
+- [X] T044 [P] [US5] Write and run failing local and HTTP override, no-fallback, and invalid
       schema tests in `tests/integration/test_catalog_override.py`
-- [ ] T045 [P] [US5] Extend catalog unit tests for override selection in
+- [X] T045 [P] [US5] Extend catalog unit tests for override selection in
       `tests/unit/test_registry_catalog.py`
 
 ### Minimal Implementation
 
-- [ ] T046 [US5] Load `CEIA_AISDK_CATALOG` (path or HTTP) with unsigned acceptance and schema
+- [X] T046 [US5] Load `CEIA_AISDK_CATALOG` (path or HTTP) with unsigned acceptance and schema
       `DownloadError` remediation in `src/ceia_aisdk/registry/catalog.py`
-- [ ] T047 [US5] Document the unsigned-catalog risk in `README.md` and
+- [X] T047 [US5] Document the unsigned-catalog risk in `README.md` and
       `src/ceia_aisdk/_model_cli.py` help
-- [ ] T048 [US5] Run and make the override suites pass through `uv`
+- [X] T048 [US5] Run and make the override suites pass through `uv`
 
 **Checkpoint**: Operators can replace the public host. Invalid schema fails with remediation.
 Tests still never hit production weights unless an override is explicit.
@@ -265,16 +265,16 @@ that omits an essential name; inspect only the model cache.
 
 ### Tests First
 
-- [ ] T049 [P] [US6] Write and run failing present-alias download, missing-name warning, and
+- [X] T049 [P] [US6] Write and run failing present-alias download, missing-name warning, and
       no-distribution-artifact tests in `tests/integration/test_model_essentials.py`
-- [ ] T050 [P] [US6] Extend `tests/contract/test_model_cli_help.py` with `--essentials` help
+- [X] T050 [P] [US6] Extend `tests/contract/test_model_cli_help.py` with `--essentials` help
       and example text
 
 ### Minimal Implementation
 
-- [ ] T051 [US6] Implement `model pull --essentials` in `src/ceia_aisdk/_model_cli.py` using
+- [X] T051 [US6] Implement `model pull --essentials` in `src/ceia_aisdk/_model_cli.py` using
       the catalog `essentials` list
-- [ ] T052 [US6] Run and make the essentials suite pass through `uv`
+- [X] T052 [US6] Run and make the essentials suite pass through `uv`
 
 **Checkpoint**: `--essentials` warms `cache_dir/models` only. Missing essentials warn.
 
@@ -290,17 +290,17 @@ sidecar `source=bypass` and unchanged cataloged `info`.
 
 ### Tests First
 
-- [ ] T053 [P] [US7] Write and run failing local-path and `hf://` bypass tests in
+- [X] T053 [P] [US7] Write and run failing local-path and `hf://` bypass tests in
       `tests/integration/test_model_bypass.py`
 
 ### Minimal Implementation
 
-- [ ] T054 [US7] Implement path and `hf://` bypass storage under `models/custom/` with
+- [X] T054 [US7] Implement path and `hf://` bypass storage under `models/custom/` with
       `source=bypass` in `src/ceia_aisdk/registry/cache.py` and
       `src/ceia_aisdk/registry/downloader.py`
-- [ ] T055 [US7] Accept bypass tokens in `model pull` in `src/ceia_aisdk/_model_cli.py` and
+- [X] T055 [US7] Accept bypass tokens in `model pull` in `src/ceia_aisdk/_model_cli.py` and
       document them in `README.md`
-- [ ] T056 [US7] Run and make the bypass suite pass through `uv` without leaking origin into
+- [X] T056 [US7] Run and make the bypass suite pass through `uv` without leaking origin into
       cataloged `info`
 
 **Checkpoint**: Bring-your-own-model works. Cataloged aliases remain opaque.
@@ -311,18 +311,18 @@ sidecar `source=bypass` and unchanged cataloged `info`.
 
 **Purpose**: Documentation, packaging, import budget, and full quickstart gates.
 
-- [ ] T057 [P] Document aliases, CLI, `ensure_local`, opacity, bypasses, `CEIA_AISDK_CATALOG`,
+- [X] T057 [P] Document aliases, CLI, `ensure_local`, opacity, bypasses, `CEIA_AISDK_CATALOG`,
       offline mode, and unsigned-catalog risk in English in `README.md`
-- [ ] T058 [P] Complete Google-style English docstrings for every new public and non-public
+- [X] T058 [P] Complete Google-style English docstrings for every new public and non-public
       method in `src/ceia_aisdk/registry/`, `src/ceia_aisdk/_model_cli.py`,
       `src/ceia_aisdk/errors.py`, and `src/ceia_aisdk/cli.py`
-- [ ] T059 Confirm the wheel/sdist contain `_internal_catalog.yaml`, exclude weight files, and
+- [X] T059 Confirm the wheel/sdist contain `_internal_catalog.yaml`, exclude weight files, and
       still forbid `httpx`/`yaml` on `import ceia_aisdk` in
       `tests/integration/test_installed_artifacts.py` and
       `tests/contract/test_package_api.py`
-- [ ] T060 Execute every validation scenario in `specs/002-model-registry/quickstart.md` with
+- [X] T060 Execute every validation scenario in `specs/002-model-registry/quickstart.md` with
       `uv`, using loopback fixtures only, and correct inaccurate expectations in that file
-- [ ] T061 Run all locked quality, English-language, test, network-isolation, Python-matrix,
+- [X] T061 Run all locked quality, English-language, test, network-isolation, Python-matrix,
       wheel/sdist, and artifact gates without `uv publish`, resolving failures in
       `pyproject.toml`, `uv.lock`, `src/ceia_aisdk/`, `tests/`, `README.md`, and
       `specs/002-model-registry/quickstart.md`

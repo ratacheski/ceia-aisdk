@@ -1,0 +1,56 @@
+schema_version: 1
+essentials:
+  - llm/small
+models:
+  llm:
+    small:
+      latest: 1
+      versions:
+        1:
+          url: "https://huggingface.co/ceia-aisdk/llm-small-v1/resolve/main/model.gguf"
+          sha256: "2fde00ce69dd4899c70d020845e2638353015bba0fdf161b3eb965f2bca4464e"
+          size_bytes: 2497280736
+          public:
+            license_family: apache-2.0
+            commercial_use: true
+            context_length: 32768
+            size_gb: 2.33
+            capabilities:
+              - chat
+              - tool_use
+              - multilingual
+            quantization_class: standard
+    medium:
+      latest: 1
+      versions:
+        1:
+          url: "https://huggingface.co/ceia-aisdk/llm-medium-v1/resolve/main/model.gguf"
+          sha256: "65b8fcd92af6b4fefa935c625d1ac27ea29dcb6ee14589c55a8f115ceaaa1423"
+          size_bytes: 4683074240
+          public:
+            license_family: apache-2.0
+            commercial_use: true
+            context_length: 32768
+            size_gb: 4.36
+            capabilities:
+              - chat
+              - tool_use
+              - multilingual
+            quantization_class: standard
+    large:
+      latest: 1
+      versions:
+        1:
+          url: "https://huggingface.co/ceia-aisdk/llm-large-v1/resolve/main/model.gguf"
+          sha256: "e47ad95dad6ff848b431053b375adb5d39321290ea2c638682577dafca87c008"
+          size_bytes: 8988110976
+          public:
+            license_family: apache-2.0
+            commercial_use: true
+            context_length: 32768
+            size_gb: 8.37
+            capabilities:
+              - chat
+              - tool_use
+              - multilingual
+            quantization_class: standard

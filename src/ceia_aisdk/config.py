@@ -36,7 +36,7 @@ class AISDKConfig:
             ``cuda:N``).
         cache_dir: Expanded cache directory path. The directory is not created.
         log_level: Package log level name.
-        offline: Recorded offline intent; this feature does not block downloads.
+        offline: Recorded offline intent. Download operations honor this flag.
     """
 
     device: str

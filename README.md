@@ -152,4 +152,51 @@ CEIA_AISDK_DEVICE=cuda uv run ceia-aisdk doctor
 Automatic selection with no GPU is not an error: `get_device("auto")` returns
 `cpu`.
 
+## Model registry
+
+The registry maps opaque aliases such as `llm/small`, `llm/small@1`, and
+`llm/small@latest` to a single checksummed artifact. Programmatic callers must
+use a domain-qualified alias or pass `domain=`. The CLI treats unqualified
+`small` as `llm/small`.
+
+```python
+from ceia_aisdk.registry import ensure_local, get_public_metadata, resolve
+
+resolve("llm/small")
+get_public_metadata("llm/small")
+path = ensure_local("llm/small")  # downloads once, then reuses the cache
+```
+
+```bash
+uv run ceia-aisdk model --help
+uv run ceia-aisdk model pull llm/small
+uv run ceia-aisdk model pull --essentials
+uv run ceia-aisdk model info llm/small
+uv run ceia-aisdk model where llm/small
+uv run ceia-aisdk model list
+uv run ceia-aisdk model verify
+uv run ceia-aisdk model rm llm/small
+```
+
+Artifacts are stored under the configured `cache_dir` as
+`models/<domain>/<size>-v<N>.bin`. Cache names, `model info`, and public
+exceptions do not include the origin URL, upstream repository, or upstream
+filename. Weights are never packaged in the wheel.
+
+`CEIA_AISDK_OFFLINE=1` reuses a valid cache and refuses uncached downloads
+without opening a socket. `CEIA_AISDK_CATALOG` replaces the bundled catalog
+with a local YAML file or an HTTP URL. There is no merge, no signature check,
+and no fallback to the public host. Catalog authenticity is not verified;
+integrity is the artifact SHA-256 checksum. Treat a remote catalog override as
+an unsigned trust decision.
+
+Documented bypasses skip the catalog: an existing filesystem path, or
+`hf://<repo>/<file>`. Bypasses are stored under `models/custom/` with sidecar
+`source=bypass` and do not rewrite catalog opaque names.
+
+```bash
+CEIA_AISDK_CATALOG=/path/to/catalog.yaml uv run ceia-aisdk model pull llm/small
+CEIA_AISDK_OFFLINE=1 uv run ceia-aisdk model where llm/small
+```
+
 

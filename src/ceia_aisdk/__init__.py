@@ -10,7 +10,13 @@ from importlib.metadata import PackageNotFoundError, version
 
 from ceia_aisdk._logging import install_null_handler
 from ceia_aisdk.config import AISDKConfig
-from ceia_aisdk.errors import AISDKError, ConfigError, DeviceError
+from ceia_aisdk.errors import (
+    AISDKError,
+    ConfigError,
+    DeviceError,
+    DownloadError,
+    ModelNotFoundError,
+)
 from ceia_aisdk.hardware import GPUInfo, detect_gpus, get_device
 
 install_null_handler()
@@ -25,7 +31,9 @@ __all__ = [
     "AISDKError",
     "ConfigError",
     "DeviceError",
+    "DownloadError",
     "GPUInfo",
+    "ModelNotFoundError",
     "__version__",
     "detect_gpus",
     "get_device",

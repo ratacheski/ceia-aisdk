@@ -54,3 +54,32 @@ class DeviceError(AISDKError):
             remediation: Nonempty user-facing English next action.
         """
         super().__init__(message, remediation=remediation)
+
+
+class ModelNotFoundError(AISDKError):
+    """Raised when a cataloged alias is not present in the active catalog."""
+
+    def __init__(self, message: str, *, remediation: str) -> None:
+        """Initialize a missing-alias error.
+
+        Args:
+            message: Nonempty user-facing English explanation.
+            remediation: Nonempty user-facing English next action. When the
+                domain is known, list aliases available in that domain.
+        """
+        super().__init__(message, remediation=remediation)
+
+
+class DownloadError(AISDKError):
+    """Raised when a catalog load, transfer, integrity check, or cache write fails."""
+
+    def __init__(self, message: str, *, remediation: str) -> None:
+        """Initialize a download or catalog-load error.
+
+        Args:
+            message: Nonempty user-facing English explanation. Must not include
+                catalog origin URLs or upstream filenames.
+            remediation: Nonempty user-facing English next action. Must not
+                include catalog origin URLs.
+        """
+        super().__init__(message, remediation=remediation)

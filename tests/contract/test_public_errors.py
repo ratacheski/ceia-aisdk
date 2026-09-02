@@ -8,7 +8,13 @@ from pathlib import Path
 
 import pytest
 
-from ceia_aisdk.errors import AISDKError, ConfigError, DeviceError
+from ceia_aisdk.errors import (
+    AISDKError,
+    ConfigError,
+    DeviceError,
+    DownloadError,
+    ModelNotFoundError,
+)
 
 _ASCII_DOC_RE = re.compile(r"^[\x20-\x7E\n]+$")
 
@@ -17,7 +23,12 @@ def test_public_error_hierarchy() -> None:
     assert issubclass(AISDKError, Exception)
     assert issubclass(ConfigError, AISDKError)
     assert issubclass(DeviceError, AISDKError)
+    assert issubclass(ModelNotFoundError, AISDKError)
+    assert issubclass(DownloadError, AISDKError)
     assert ConfigError is not DeviceError
+    assert ModelNotFoundError is not DownloadError
+    assert ModelNotFoundError is not ConfigError
+    assert DownloadError is not DeviceError
 
 
 def test_constructor_requires_keyword_remediation() -> None:
@@ -38,13 +49,23 @@ def test_nonempty_remediation_is_public() -> None:
 def test_subclasses_preserve_remediation() -> None:
     config_error = ConfigError("invalid log_level", remediation="use WARNING")
     device_error = DeviceError("cuda is unavailable", remediation="use device=cpu")
+    missing = ModelNotFoundError("unknown alias llm/tiny", remediation="use llm/small")
+    download = DownloadError("transfer failed", remediation="retry model pull")
     assert isinstance(config_error, AISDKError)
     assert isinstance(device_error, AISDKError)
+    assert isinstance(missing, AISDKError)
+    assert isinstance(download, AISDKError)
     assert config_error.remediation == "use WARNING"
     assert device_error.remediation == "use device=cpu"
+    assert missing.remediation == "use llm/small"
+    assert download.remediation == "retry model pull"
+    assert missing.remediation.strip()
+    assert download.remediation.strip()
 
 
-@pytest.mark.parametrize("cls", [AISDKError, ConfigError, DeviceError])
+@pytest.mark.parametrize(
+    "cls", [AISDKError, ConfigError, DeviceError, ModelNotFoundError, DownloadError]
+)
 def test_error_classes_have_english_docstrings(cls: type[AISDKError]) -> None:
     docstring = inspect.getdoc(cls)
     assert docstring
@@ -56,7 +77,9 @@ def test_error_classes_have_english_docstrings(cls: type[AISDKError]) -> None:
     assert "remediation" in init_doc.lower()
 
 
-@pytest.mark.parametrize("cls", [AISDKError, ConfigError, DeviceError])
+@pytest.mark.parametrize(
+    "cls", [AISDKError, ConfigError, DeviceError, ModelNotFoundError, DownloadError]
+)
 @pytest.mark.parametrize(
     ("message", "remediation"),
     [("", "do this"), ("   ", "do this"), ("failed", ""), ("failed", "   ")],
@@ -91,3 +114,37 @@ def test_device_error_mentions_cpu_remediation() -> None:
         get_device("cuda:oops")
     assert "cpu" in exc_info.value.remediation.lower()
     assert exc_info.value.remediation.strip()
+
+
+def test_registry_errors_are_exported_from_package_root() -> None:
+    import ceia_aisdk
+
+    assert ceia_aisdk.ModelNotFoundError is ModelNotFoundError
+    assert ceia_aisdk.DownloadError is DownloadError
+
+
+def test_registry_errors_do_not_embed_origin_urls() -> None:
+    origin = "https://huggingface.co/ceia-aisdk/llm-small-v1/resolve/main/model.gguf"
+    missing = ModelNotFoundError(
+        "Alias llm/unknown is not in the active catalog.",
+        remediation="Use llm/small, llm/medium, or llm/large.",
+    )
+    download = DownloadError(
+        "The cataloged artifact could not be downloaded.",
+        remediation="Retry ceia-aisdk model pull or set CEIA_AISDK_CATALOG to a reachable catalog.",
+    )
+    for error in (missing, download):
+        text = f"{error} {error.remediation}"
+        assert origin not in text
+        assert "huggingface.co" not in text
+        assert "model.gguf" not in text
+        assert error.remediation.strip()
+
+
+def test_license_error_is_not_defined() -> None:
+    import ceia_aisdk
+    import ceia_aisdk.errors as errors_module
+
+    assert not hasattr(ceia_aisdk, "LicenseError")
+    assert not hasattr(errors_module, "LicenseError")
+    assert not hasattr(errors_module, "CatalogSignatureError")

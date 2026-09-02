@@ -11,6 +11,7 @@ import sys
 
 import typer
 
+from ceia_aisdk._model_cli import model_app
 from ceia_aisdk.errors import AISDKError, ConfigError, DeviceError
 
 app = typer.Typer(
@@ -20,12 +21,15 @@ app = typer.Typer(
         "foundation. Use it to inspect whether the package is usable without "
         "downloading models or transmitting data."
     ),
-    epilog="Examples:\n\n  ceia-aisdk doctor\n  ceia-aisdk doctor --help",
+    epilog=(
+        "Examples:\n\n  ceia-aisdk doctor\n  ceia-aisdk doctor --help\n  ceia-aisdk model --help"
+    ),
     no_args_is_help=True,
     add_completion=False,
     pretty_exceptions_enable=False,
     pretty_exceptions_show_locals=False,
 )
+app.add_typer(model_app, name="model")
 
 
 @app.callback()
@@ -33,7 +37,8 @@ def main() -> None:
     """CEIA AI SDK command-line interface for the local Linux x86_64 foundation.
 
     Use it to inspect whether the package is usable without downloading models
-    or transmitting data.
+    or transmitting data. Discover model cache commands with
+    ``ceia-aisdk model --help``.
     """
     return
 

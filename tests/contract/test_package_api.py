@@ -19,6 +19,8 @@ from ceia_aisdk import AISDKConfig
 _FORBIDDEN_ROOT_IMPORTS = {
     "typer",
     "rich",
+    "httpx",
+    "yaml",
     "torch",
     "llama_cpp",
     "faster_whisper",
@@ -57,10 +59,20 @@ def test_public_error_exports() -> None:
     assert ceia_aisdk.AISDKError is not None
     assert ceia_aisdk.ConfigError is not None
     assert ceia_aisdk.DeviceError is not None
-    from ceia_aisdk import AISDKError, ConfigError, DeviceError
+    assert ceia_aisdk.ModelNotFoundError is not None
+    assert ceia_aisdk.DownloadError is not None
+    from ceia_aisdk import (
+        AISDKError,
+        ConfigError,
+        DeviceError,
+        DownloadError,
+        ModelNotFoundError,
+    )
 
     assert issubclass(ConfigError, AISDKError)
     assert issubclass(DeviceError, AISDKError)
+    assert issubclass(ModelNotFoundError, AISDKError)
+    assert issubclass(DownloadError, AISDKError)
 
 
 def test_python_requires_range() -> None:
@@ -94,6 +106,7 @@ def test_package_root_is_lightweight() -> None:
     assert not (imported & _FORBIDDEN_ROOT_IMPORTS)
     assert "cli" not in imported
     assert "_diagnostics" not in imported
+    assert "registry" not in imported
 
 
 def test_fresh_import_does_not_load_cli_or_backends() -> None:
@@ -103,7 +116,10 @@ import ceia_aisdk
 forbidden = (
     "typer",
     "rich",
+    "httpx",
+    "yaml",
     "ceia_aisdk.cli",
+    "ceia_aisdk.registry",
     "ceia_aisdk._diagnostics",
     "torch",
     "llama_cpp",
@@ -180,7 +196,10 @@ assert callable(ceia_aisdk.detect_gpus)
 assert callable(ceia_aisdk.get_device)
 assert "typer" not in sys.modules
 assert "rich" not in sys.modules
+assert "httpx" not in sys.modules
+assert "yaml" not in sys.modules
 assert "ceia_aisdk.cli" not in sys.modules
+assert "ceia_aisdk.registry" not in sys.modules
 """
     result = subprocess.run(
         [sys.executable, "-c", code], check=False, capture_output=True, text=True
