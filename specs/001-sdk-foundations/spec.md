@@ -192,7 +192,8 @@ Explicitly excluded:
 - The `[cuda]` group may be only a documented reservation in this feature; functional CUDA inference is a PRD-02 gate.
 - If recognized in advance, the telemetry flag remains disabled and has no network effect.
 - The decisions ratified in the PRD program on 2026-09-01 and PRD-00 are the normative sources for this specification.
-- The project constitution still contains placeholders and therefore adds no ratified principles to this specification.
+- The ratified project constitution, version 1.0.0, governs this feature and all downstream
+  SpecKit artifacts.
 
 ### Dependencies
 

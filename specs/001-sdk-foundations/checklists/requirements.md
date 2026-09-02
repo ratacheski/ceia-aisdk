@@ -34,4 +34,5 @@
 - Validation was completed in the first iteration; no clarification markers or placeholders remained.
 - Names such as `ceia-aisdk`, `ceia_aisdk`, `doctor`, `AISDKConfig`, and `DeviceError` are external contracts defined by PRD-00, not internal implementation choices.
 - Internal details cited in the PRD, such as files, frameworks, and the GPU probing mechanism, were deliberately omitted.
-- The constitution in `.specify/memory/constitution.md` still contains placeholders; it provided no ratified constraints for this validation.
+- Constitution version 1.0.0 was ratified after the initial specification validation and governs
+  planning and all downstream artifacts.
